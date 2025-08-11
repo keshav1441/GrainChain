@@ -11,9 +11,55 @@ from app.schemas.crop import (
     CropListingResponse, InquiryCreate, InquiryResponse, 
     CropSearchFilters, InquiryUpdate
 )
+from app.schemas.user import UserProfileResponse, UserResponse
 from app.api.deps import get_current_active_user
 
 router = APIRouter()
+
+@router.get("/farmers", response_model=List[UserProfileResponse])
+async def get_farmers(
+    limit: int = 20,
+    skip: int = 0,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get a list of all farmers with their profiles.
+    Only accessible by buyers.
+    """
+    if current_user.role.value != "buyer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only buyers can view farmers"
+        )
+
+    # Get users collection
+    users_collection = get_collection("users")
+    farmers_collection = get_collection("farmers")
+    
+    # Get paginated list of farmers
+    farmers_cursor = users_collection.find({"role": "farmer"}).skip(skip).limit(limit)
+    farmers = await farmers_cursor.to_list(length=limit)
+    
+    # Get farmer profiles for each user
+    result = []
+    for farmer in farmers:
+        # Convert ObjectId to string for the response
+        farmer["_id"] = str(farmer["_id"])
+        
+        # Get the farmer's profile if it exists
+        farmer_profile = await farmers_collection.find_one({"user_id": farmer["_id"]})
+        
+        # Create a UserProfileResponse with the user and profile data
+        result.append(UserProfileResponse(
+            user=UserResponse.model_validate(farmer),
+            farmer_profile=farmer_profile,
+            buyer_profile=None,
+            financier_profile=None
+        ))
+    
+    return result
+
 
 @router.get("/listings", response_model=List[CropListingResponse])
 async def search_crop_listings(

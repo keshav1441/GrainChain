@@ -71,13 +71,14 @@ export const authApi = {
 
 // Crop API endpoints
 export const cropApi = {
-  getListings: (params?: {
-    crop_name?: string;
-    category?: string;
-    state?: string;
+  getMarketplaceListings: (limit: number = 20) => api.get('/crops/marketplace', { params: { limit } }),
+
+  searchListings: (params?: {
+    crop_type?: string;
+    location?: string;
     min_price?: number;
     max_price?: number;
-    page?: number;
+    skip?: number;
     limit?: number;
   }) => api.get('/crops/listings', { params }),
   

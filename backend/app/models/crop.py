@@ -36,6 +36,7 @@ class InquiryStatus(str, enum.Enum):
 class CropListing(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
     farmer_id: str
+    farmer_name: str
     
     # Crop details
     crop_name: str

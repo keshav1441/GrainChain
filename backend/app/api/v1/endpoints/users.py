@@ -9,26 +9,13 @@ import logging
 
 from ....api.deps import get_current_user
 from ....models.user import User
-from pydantic import BaseModel
+from ....schemas.user import UserProfileResponse, UserUpdate
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# User response models
-class UserProfileResponse(BaseModel):
-    id: str
-    email: str
-    full_name: str
-    role: str
-    phone: Optional[str] = None
-    is_verified: bool = False
-    location: Optional[str] = None
 
-class UserUpdateRequest(BaseModel):
-    full_name: Optional[str] = None
-    phone: Optional[str] = None
-    location: Optional[str] = None
 
 
 @router.get("/profile", response_model=UserProfileResponse)
@@ -54,7 +41,7 @@ async def get_user_profile(
 
 @router.put("/profile", response_model=UserProfileResponse)
 async def update_user_profile(
-    request: UserUpdateRequest,
+    request: UserUpdate,
     current_user: User = Depends(get_current_user)
 ):
     """Update current user's profile"""

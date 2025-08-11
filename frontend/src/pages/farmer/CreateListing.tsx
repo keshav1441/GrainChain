@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { cropApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
@@ -80,13 +81,28 @@ export const CreateListing: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
+    // TODO: Handle image uploads separately, e.g., get URLs before submitting
+
+    const listingData = {
+      crop_type: formData.cropType,
+      quantity: formData.quantity,
+      price_per_kg: formData.pricePerUnit,
+      location: formData.location,
+      description: formData.description,
+      harvest_date: formData.harvestDate,
+      certifications: formData.organicCertified ? ['organic'] : [],
+      // Additional fields from form that might need to be added to backend
+      variety: formData.variety,
+      quality_grade: formData.qualityGrade,
+      unit: formData.unit,
+    };
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await cropApi.createListing(listingData);
       toast.success('Crop listing created successfully!');
       navigate('/farmer/dashboard');
     } catch (error) {
+      console.error('Failed to create listing:', error);
       toast.error('Failed to create listing. Please try again.');
     } finally {
       setLoading(false);
