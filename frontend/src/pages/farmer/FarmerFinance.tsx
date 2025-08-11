@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
@@ -12,16 +12,29 @@ import {
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
 import FarmerPayments from '../../components/payments/FarmerPayments';
+import { financeApi } from '../../services/api';
 
+// Interfaces to match backend models
 interface LoanApplication {
   id: string;
-  type: string;
+  loan_type: string; // Changed from 'type'
   amount: number;
   status: 'pending' | 'approved' | 'rejected' | 'disbursed';
-  appliedDate: string;
+  created_at: string; // Changed from 'appliedDate'
   purpose: string;
-  interestRate?: number;
-  tenure?: number;
+  interest_rate?: number; // Changed from 'interestRate'
+  tenure_months?: number; // Changed from 'tenure'
+}
+
+interface LoanProduct {
+  id: string;
+  loan_name: string;
+  description: string;
+  min_amount: number;
+  max_amount: number;
+  interest_rate: string;
+  tenure_months: string;
+  eligibility_criteria: string;
 }
 
 interface LoanEligibility {
@@ -35,83 +48,46 @@ interface LoanEligibility {
 export const FarmerFinance: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'overview' | 'apply' | 'history'>('overview');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
 
-  // Mock data
-  const eligibility: LoanEligibility = {
-    eligible: true,
-    maxAmount: 500000,
-    recommendedAmount: 300000,
-    creditScore: 720,
-    factors: [
-      'Good payment history',
-      'Consistent crop yields',
-      'Diversified crop portfolio',
-      'Strong market presence'
-    ]
-  };
+  const [eligibility, setEligibility] = useState<LoanEligibility | null>(null);
+  const [applications, setApplications] = useState<LoanApplication[]>([]);
+  const [loanProducts, setLoanProducts] = useState<LoanProduct[]>([]);
 
-  const applications: LoanApplication[] = [
-    {
-      id: '1',
-      type: 'Crop Loan',
-      amount: 250000,
-      status: 'approved',
-      appliedDate: '2024-01-15',
-      purpose: 'Wheat cultivation for upcoming season',
-      interestRate: 7.5,
-      tenure: 12
-    },
-    {
-      id: '2',
-      type: 'Equipment Loan',
-      amount: 150000,
-      status: 'pending',
-      appliedDate: '2024-01-20',
-      purpose: 'Purchase of new tractor'
-    },
-    {
-      id: '3',
-      type: 'Working Capital',
-      amount: 100000,
-      status: 'disbursed',
-      appliedDate: '2023-12-10',
-      purpose: 'Operational expenses',
-      interestRate: 8.0,
-      tenure: 6
-    }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [appsRes, eligibilityRes] = await Promise.all([
+          financeApi.getMyApplications(),
+          financeApi.getCreditScore(), // This now returns eligibility and available products
+        ]);
 
-  const loanTypes = [
-    {
-      type: 'Crop Loan',
-      description: 'Short-term loans for crop cultivation expenses',
-      maxAmount: 300000,
-      interestRate: '7.5% - 9.0%',
-      tenure: '6-12 months'
-    },
-    {
-      type: 'Equipment Loan',
-      description: 'Loans for purchasing farming equipment and machinery',
-      maxAmount: 1000000,
-      interestRate: '8.0% - 10.5%',
-      tenure: '2-7 years'
-    },
-    {
-      type: 'Working Capital',
-      description: 'Loans for day-to-day operational expenses',
-      maxAmount: 200000,
-      interestRate: '8.5% - 11.0%',
-      tenure: '3-12 months'
-    },
-    {
-      type: 'Kisan Credit Card',
-      description: 'Flexible credit facility for agricultural needs',
-      maxAmount: 500000,
-      interestRate: '7.0% - 8.5%',
-      tenure: 'Revolving credit'
-    }
-  ];
+        setApplications(appsRes.data);
+
+        const eligibilityData = eligibilityRes.data;
+        setLoanProducts(eligibilityData.available_products || []);
+        
+        setEligibility({
+          eligible: eligibilityData.loan_eligible,
+          maxAmount: eligibilityData.max_loan_amount,
+          creditScore: eligibilityData.credit_score,
+          factors: eligibilityData.recommendations,
+          // recommendedAmount is not in the new model, so we remove it or set a default
+          recommendedAmount: 0, 
+        });
+
+      } catch (error) {
+        console.error("Failed to fetch finance data", error);
+        toast.error('Failed to load financial data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -149,19 +125,53 @@ export const FarmerFinance: React.FC = () => {
     }).format(amount);
   };
 
-  const handleLoanApplication = async (loanType: string) => {
-    setLoading(true);
+  const handleLoanApplication = async (loan: LoanProduct) => {
+    // For simplicity, we'll use a prompt. A real app would have a form.
+    const amountStr = prompt(`Enter amount to apply for ${loan.loan_name} (Max: ${formatCurrency(loan.max_amount)}):`);
+    const purpose = prompt('Enter the purpose for this loan:');
+
+    if (!amountStr || !purpose) {
+      toast.error('Application cancelled.');
+      return;
+    }
+
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0 || amount > loan.max_amount) {
+      toast.error('Invalid amount entered.');
+      return;
+    }
+
+    setApplying(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success(`${loanType} application submitted successfully!`);
+      await financeApi.applyForLoan({
+        loan_product_id: loan.id,
+        amount,
+        purpose,
+        tenure_months: parseInt(loan.tenure_months.split('-')[1]), // Example logic
+      });
+      toast.success(`Successfully applied for ${loan.loan_name}!`);
+      // Refresh history
+      const appsRes = await financeApi.getMyApplications();
+      setApplications(appsRes.data);
       setActiveTab('history');
-    } catch (error) {
-      toast.error('Failed to submit application. Please try again.');
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.detail || 'Failed to apply for loan.';
+      toast.error(errorMsg);
     } finally {
-      setLoading(false);
+      setApplying(false);
     }
   };
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+        <div className="text-center">
+          <p className="text-lg font-medium text-gray-700">Loading Financial Center...</p>
+          <p className="text-sm text-gray-500">Please wait a moment.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -210,47 +220,49 @@ export const FarmerFinance: React.FC = () => {
           <div className="space-y-8">
             {/* Eligibility Card */}
             <div className="bg-white shadow rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Loan Eligibility</h3>
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  eligibility.eligible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {eligibility.eligible ? 'Eligible' : 'Not Eligible'}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <p className="text-sm text-gray-500">Credit Score</p>
-                  <p className="text-2xl font-bold text-gray-900">{eligibility.creditScore}</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div
-                      className="bg-green-500 h-2 rounded-full"
-                      style={{ width: `${(eligibility.creditScore / 850) * 100}%` }}
-                    />
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Loan Eligibility</h3>
+              {eligibility ? (
+                <>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium inline-block mb-4 ${
+                    eligibility.eligible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {eligibility.eligible ? 'Eligible' : 'Not Eligible'}
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Max Loan Amount</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(eligibility.maxAmount)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Recommended Amount</p>
-                  <p className="text-2xl font-bold text-primary-600">{formatCurrency(eligibility.recommendedAmount)}</p>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Eligibility Factors</h4>
-                <ul className="space-y-1">
-                  {eligibility.factors.map((factor, index) => (
-                    <li key={index} className="flex items-center text-sm text-gray-600">
-                      <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2" />
-                      {factor}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <p className="text-sm text-gray-500">Credit Score</p>
+                      <p className="text-2xl font-bold text-gray-900">{eligibility.creditScore}</p>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-green-500 h-2 rounded-full"
+                          style={{ width: `${(eligibility.creditScore / 850) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Max Loan Amount</p>
+                      <p className="text-2xl font-bold text-gray-900">{formatCurrency(eligibility.maxAmount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Recommended Amount</p>
+                      <p className="text-2xl font-bold text-primary-600">{formatCurrency(eligibility.recommendedAmount)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-6">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Eligibility Factors</h4>
+                    <ul className="space-y-1">
+                      {eligibility.factors.map((factor, index) => (
+                        <li key={index} className="flex items-center text-sm text-gray-600">
+                          <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2" />
+                          {factor}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <p>Could not load eligibility data.</p>
+              )}
             </div>
 
             {/* Payment Component */}
@@ -274,36 +286,36 @@ export const FarmerFinance: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {loanTypes.map((loan) => (
-                <div key={loan.type} className="bg-white shadow rounded-lg p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">{loan.type}</h3>
+              {loanProducts.length > 0 ? loanProducts.map((loan) => (
+                <div key={loan.id} className="bg-white shadow rounded-lg p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">{loan.loan_name}</h3>
                   <p className="text-gray-600 text-sm mb-4">{loan.description}</p>
                   
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Max Amount:</span>
-                      <span className="font-medium">{formatCurrency(loan.maxAmount)}</span>
+                      <span className="font-medium">{formatCurrency(loan.max_amount)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Interest Rate:</span>
-                      <span className="font-medium">{loan.interestRate}</span>
+                      <span className="font-medium">{loan.interest_rate}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Tenure:</span>
-                      <span className="font-medium">{loan.tenure}</span>
+                      <span className="font-medium">{loan.tenure_months}</span>
                     </div>
                   </div>
 
                   <Button
                     variant="primary"
                     className="w-full"
-                    loading={loading}
-                    onClick={() => handleLoanApplication(loan.type)}
+                    loading={applying}
+                    onClick={() => handleLoanApplication(loan)}
                   >
                     Apply Now
                   </Button>
                 </div>
-              ))}
+              )) : <p>No loan products available at this time.</p>}
             </div>
           </div>
         )}
@@ -314,13 +326,13 @@ export const FarmerFinance: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900">Loan Applications</h3>
             </div>
             <div className="divide-y divide-gray-200">
-              {applications.map((app) => (
+              {applications.length > 0 ? applications.map((app) => (
                 <div key={app.id} className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       {getStatusIcon(app.status)}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-900">{app.type}</h4>
+                        <h4 className="text-sm font-medium text-gray-900">{app.loan_type}</h4>
                         <p className="text-sm text-gray-500">{app.purpose}</p>
                       </div>
                     </div>
@@ -335,27 +347,27 @@ export const FarmerFinance: React.FC = () => {
                   <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-gray-500">Applied Date</p>
-                      <p className="font-medium">{new Date(app.appliedDate).toLocaleDateString()}</p>
+                      <p className="font-medium">{new Date(app.created_at).toLocaleDateString()}</p>
                     </div>
-                    {app.interestRate && (
+                    {app.interest_rate && (
                       <div>
                         <p className="text-gray-500">Interest Rate</p>
-                        <p className="font-medium">{app.interestRate}%</p>
+                        <p className="font-medium">{app.interest_rate}%</p>
                       </div>
                     )}
-                    {app.tenure && (
+                    {app.tenure_months && (
                       <div>
                         <p className="text-gray-500">Tenure</p>
-                        <p className="font-medium">{app.tenure} months</p>
+                        <p className="font-medium">{app.tenure_months} months</p>
                       </div>
                     )}
                     <div>
                       <p className="text-gray-500">Application ID</p>
-                      <p className="font-medium">#{app.id}</p>
+                      <p className="font-medium">#{app.id.slice(-6)}</p>
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : <p className="p-6 text-gray-500">No applications found.</p>}
             </div>
           </div>
         )}

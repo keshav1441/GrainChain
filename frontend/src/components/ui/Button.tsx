@@ -6,7 +6,6 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   children: React.ReactNode;
-  as?: React.ElementType;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -16,7 +15,6 @@ export const Button: React.FC<ButtonProps> = ({
   className,
   disabled,
   children,
-  as: Component = 'button',
   ...props
 }) => {
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
@@ -36,11 +34,11 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   return (
-    <Component
+    <button
       className={clsx(
         baseClasses,
-        variantClasses[variant],
-        sizeClasses[size],
+        variantClasses[variant!],
+        sizeClasses[size!],
         className
       )}
       disabled={disabled || loading}
@@ -69,6 +67,6 @@ export const Button: React.FC<ButtonProps> = ({
         </svg>
       )}
       {children}
-    </Component>
+    </button>
   );
 };

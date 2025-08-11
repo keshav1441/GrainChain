@@ -209,3 +209,33 @@ async def get_marketplace_crops(
     except Exception as e:
         logger.error(f"Error getting marketplace crops: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.get("/my-listings", response_model=List[CropListingResponse])
+async def get_my_listings(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all crop listings for the current farmer"""
+    try:
+        if current_user.role != "farmer":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only farmers can view their listings"
+            )
+
+        listings_collection = get_collection("crop_listings")
+        cursor = listings_collection.find({"farmer_id": current_user.id}).sort("created_at", -1)
+        
+        my_listings = []
+        async for doc in cursor:
+            doc["id"] = str(doc.pop("_id"))
+            my_listings.append(CropListingResponse(**doc))
+        
+        return my_listings
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting my listings for farmer {current_user.id}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

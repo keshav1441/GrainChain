@@ -8,10 +8,11 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from ....core.finance_service import finance_service
-from ....api.deps import get_current_user
+from ....api.deps import get_current_user, get_db
 from ....models.user import User
-from ....models.finance import LoanApplication, LoanStatus, LoanType, Payment
+from ....models.finance import LoanApplication, LoanStatus, LoanType, Payment, FinancialProduct as LoanProduct
 from pydantic import BaseModel
+from ....core.finance_service import FinanceService
 
 logger = logging.getLogger(__name__)
 
@@ -189,45 +190,22 @@ async def disburse_loan(
 @router.get("/loan-applications", response_model=List[LoanApplication])
 async def get_loan_applications(
     status_filter: Optional[str] = None,
-    current_user: User = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db)
+) -> List[LoanApplication]:
     """Get loan applications based on user role"""
-    try:
-        await finance_service.initialize()
-        
-        # Parse status filter
-        status_enum = None
-        if status_filter:
-            try:
-                status_enum = LoanStatus(status_filter)
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid status: {status_filter}"
-                )
-        
-        # Get applications based on role
-        if current_user.role == "farmer":
-            loan_apps = await finance_service.get_loan_applications(
-                farmer_id=current_user.id,
-                status=status_enum
-            )
-        elif current_user.role == "financier":
-            loan_apps = await finance_service.get_loan_applications(
-                financier_id=current_user.id,
-                status=status_enum
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
-            )
-        
-        return loan_apps
-        
-    except Exception as e:
-        logger.error(f"Error getting loan applications: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+    finance_service = FinanceService(db)
+    query = {}
+    if current_user.role == "farmer":
+        query["farmer_id"] = current_user.id
+    elif current_user.role != "financier":
+        return [] # Or raise 403
+
+    if status_filter:
+        query["status"] = status_filter
+
+    applications_cursor = db.loan_applications.find(query)
+    return [LoanApplication(**app) async for app in applications_cursor]
 
 
 @router.get("/loan-applications/{application_id}", response_model=LoanApplication)
@@ -274,27 +252,59 @@ async def get_loan_application(
 
 @router.get("/eligibility", response_model=LoanEligibilityResponse)
 async def get_loan_eligibility(
-    current_user: User = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db)
+) -> LoanEligibilityResponse:
     """Get loan eligibility for current farmer"""
-    try:
-        # Only farmers can check eligibility
-        if current_user.role != "farmer":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only farmers can check loan eligibility"
-            )
-        
-        await finance_service.initialize()
-        
-        # Get eligibility
-        eligibility = await finance_service.get_loan_eligibility(current_user.id)
-        
-        return LoanEligibilityResponse(**eligibility)
-        
-    except Exception as e:
-        logger.error(f"Error getting loan eligibility: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+    if current_user.role != 'farmer':
+        raise HTTPException(status_code=403, detail="Only farmers can check eligibility.")
+
+    finance_service = FinanceService(db)
+    
+    # Fetch credit score and available loan products
+    eligibility_data = await FinanceService(db).get_farmer_credit_score(current_user.id)
+    products_cursor = db.loan_products.find({"is_active": True})
+    all_products = [LoanProduct(**p) async for p in products_cursor]
+
+    score = eligibility_data.get("score", 600)
+    
+    # Determine credit range and risk
+    if score >= 750:
+        credit_range = "Excellent"
+        risk_assessment = "Very Low"
+        interest_rate_range = {"min": 3.5, "max": 7.0}
+    elif score >= 680:
+        credit_range = "Good"
+        risk_assessment = "Low"
+        interest_rate_range = {"min": 5.5, "max": 12.0}
+    elif score >= 600:
+        credit_range = "Fair"
+        risk_assessment = "Medium"
+        interest_rate_range = {"min": 12.0, "max": 18.0}
+    else:
+        credit_range = "Poor"
+        risk_assessment = "High"
+        interest_rate_range = {"min": 18.0, "max": 25.0}
+
+    loan_eligible = score >= 600
+
+    # Filter products based on eligibility (e.g., min credit score requirement)
+    available_products = [
+        p.dict() for p in all_products 
+        if p.min_credit_score is None or score >= p.min_credit_score
+    ]
+
+    return LoanEligibilityResponse(
+        farmer_id=current_user.id,
+        credit_score=score,
+        credit_range=credit_range,
+        loan_eligible=loan_eligible,
+        max_loan_amount=eligibility_data.get("historical_max_loan", 5000.00 if not loan_eligible else 50000.00),
+        interest_rate_range=interest_rate_range,
+        available_products=available_products,
+        recommendations=eligibility_data.get("factors", []),
+        risk_assessment=risk_assessment
+    )
 
 
 @router.post("/payments", response_model=Dict[str, str])
@@ -345,6 +355,12 @@ async def get_payment_history(
         logger.error(f"Error getting payment history: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
+
+@router.get("/loan-products", response_model=List[LoanProduct])
+async def get_loan_products(db=Depends(get_db)):
+    """Get all available loan products"""
+    products_cursor = db.financial_products.find({"is_active": True})
+    return [LoanProduct(**p) async for p in products_cursor]
 
 @router.get("/payments/{payment_id}", response_model=Payment)
 async def get_payment_details(

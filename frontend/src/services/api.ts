@@ -88,7 +88,7 @@ export const cropApi = {
   
   deleteListing: (id: number) => api.delete(`/crops/listings/${id}`),
   
-  getListing: (id: number) => api.get(`/crops/listings/${id}`),
+  getListing: (id: string) => api.get(`/crops/listings/${id}`),
   
   getMyListings: () => api.get('/crops/my-listings'),
   
@@ -122,15 +122,15 @@ export const financeApi = {
     loan_type?: string;
     min_amount?: number;
     max_amount?: number;
-  }) => api.get('/finance/products', { params }),
+  }) => api.get('/finance/loan-products', { params }),
   
-  applyForLoan: (data: any) => api.post('/finance/applications', data),
+  applyForLoan: (data: any) => api.post('/finance/loan-applications', data),
   
-  getMyApplications: () => api.get('/finance/my-applications'),
+  getMyApplications: () => api.get('/finance/loan-applications'),
   
-  getApplication: (id: number) => api.get(`/finance/applications/${id}`),
+  getApplication: (id: number) => api.get(`/finance/loan-applications/${id}`),
   
-  getCreditScore: () => api.get('/finance/credit-score'),
+  getCreditScore: () => api.get('/finance/eligibility'),
   
   getFinanciers: () => api.get('/finance/financiers'),
 };

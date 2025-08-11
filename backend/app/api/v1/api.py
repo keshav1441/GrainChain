@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, buyer, crops, users, ai_ml, finance
+from app.api.v1.endpoints import auth, buyer, crops, users, ai_ml, finance, inquiries
 
 api_router = APIRouter()
 
@@ -20,6 +20,9 @@ api_router.include_router(ai_ml.router, prefix="/ai-ml", tags=["ai-ml"])
 
 # Include finance routes
 api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
+
+# Include inquiries routes
+api_router.include_router(inquiries.router, prefix="/inquiries", tags=["inquiries"])
 
 # Health check endpoint
 @api_router.get("/health")

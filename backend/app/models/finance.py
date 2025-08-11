@@ -211,6 +211,7 @@ class FinancialProduct(BaseModel):
     min_annual_income: Optional[float] = None
     eligible_states: Optional[List[str]] = None  # List of states
     eligible_crops: Optional[List[str]] = None  # List of crops
+    min_credit_score: Optional[int] = None # Minimum credit score required
     
     # Product status
     is_active: bool = True
