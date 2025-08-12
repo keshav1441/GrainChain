@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+import api from './api';
 
 // Types
 export interface PaymentRequest {
@@ -66,24 +64,11 @@ export interface LoanEligibility {
 }
 
 class PaymentService {
-  private getAuthHeaders() {
-    const token = localStorage.getItem('token');
-    return {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    };
-  }
 
   // Payment Methods
   async createPayment(paymentData: PaymentRequest): Promise<{ payment_id: string; status: string }> {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/finance/payments`,
-        paymentData,
-        this.getAuthHeaders()
-      );
+      const response = await api.post('/finance/payments', paymentData);
       return response.data;
     } catch (error) {
       console.error('Error creating payment:', error);
@@ -93,10 +78,7 @@ class PaymentService {
 
   async getPaymentHistory(limit: number = 50): Promise<Transaction[]> {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/finance/payments?limit=${limit}`,
-        this.getAuthHeaders()
-      );
+      const response = await api.get(`/finance/payments?limit=${limit}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching payment history:', error);
@@ -106,10 +88,7 @@ class PaymentService {
 
   async getPaymentDetails(paymentId: string): Promise<Transaction> {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/finance/payments/${paymentId}`,
-        this.getAuthHeaders()
-      );
+      const response = await api.get(`/finance/payments/${paymentId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching payment details:', error);
@@ -130,11 +109,7 @@ class PaymentService {
     other_documents?: string[];
   }): Promise<LoanApplication> {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/finance/loan-applications`,
-        loanData,
-        this.getAuthHeaders()
-      );
+      const response = await api.post('/finance/loan-applications', loanData);
       return response.data;
     } catch (error) {
       console.error('Error creating loan application:', error);
@@ -144,11 +119,7 @@ class PaymentService {
 
   async submitLoanApplication(applicationId: string): Promise<LoanApplication> {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/finance/loan-applications/${applicationId}/submit`,
-        {},
-        this.getAuthHeaders()
-      );
+      const response = await api.post(`/finance/loan-applications/${applicationId}/submit`, {});
       return response.data;
     } catch (error) {
       console.error('Error submitting loan application:', error);
@@ -162,11 +133,7 @@ class PaymentService {
     notes?: string
   ): Promise<LoanApplication> {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/finance/loan-applications/${applicationId}/review`,
-        { decision, notes },
-        this.getAuthHeaders()
-      );
+      const response = await api.put(`/finance/loan-applications/${applicationId}/review`, { decision, notes });
       return response.data;
     } catch (error) {
       console.error('Error reviewing loan application:', error);
@@ -181,11 +148,7 @@ class PaymentService {
     status: string;
   }> {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/finance/loan-applications/${applicationId}/disburse`,
-        {},
-        this.getAuthHeaders()
-      );
+      const response = await api.post(`/finance/loan-applications/${applicationId}/disburse`, {});
       return response.data;
     } catch (error) {
       console.error('Error disbursing loan:', error);
@@ -195,11 +158,10 @@ class PaymentService {
 
   async getLoanApplications(statusFilter?: string): Promise<LoanApplication[]> {
     try {
-      const url = statusFilter 
-        ? `${API_BASE_URL}/finance/loan-applications?status=${statusFilter}`
-        : `${API_BASE_URL}/finance/loan-applications`;
-      
-      const response = await axios.get(url, this.getAuthHeaders());
+      const url = statusFilter
+        ? `/finance/loan-applications?status=${statusFilter}`
+        : `/finance/loan-applications`;
+      const response = await api.get(url);
       return response.data;
     } catch (error) {
       console.error('Error fetching loan applications:', error);
@@ -209,10 +171,7 @@ class PaymentService {
 
   async getLoanApplication(applicationId: string): Promise<LoanApplication> {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/finance/loan-applications/${applicationId}`,
-        this.getAuthHeaders()
-      );
+      const response = await api.get(`/finance/loan-applications/${applicationId}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching loan application:', error);
@@ -222,10 +181,7 @@ class PaymentService {
 
   async getLoanEligibility(): Promise<LoanEligibility> {
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/finance/eligibility`,
-        this.getAuthHeaders()
-      );
+      const response = await api.get('/finance/eligibility');
       return response.data;
     } catch (error) {
       console.error('Error fetching loan eligibility:', error);
@@ -248,11 +204,7 @@ class PaymentService {
     factors: string[];
   }> {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/ai-ml/predict-price`,
-        cropData,
-        this.getAuthHeaders()
-      );
+      const response = await api.post('/ai-ml/predict-price', cropData);
       return response.data;
     } catch (error) {
       console.error('Error getting price prediction:', error);
@@ -273,11 +225,7 @@ class PaymentService {
     reasoning: string[];
   }> {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/ai-ml/recommendations`,
-        requestData,
-        this.getAuthHeaders()
-      );
+      const response = await api.post('/ai-ml/recommendations', requestData);
       return response.data;
     } catch (error) {
       console.error('Error getting recommendations:', error);

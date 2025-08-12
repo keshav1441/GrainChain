@@ -191,21 +191,32 @@ async def disburse_loan(
 async def get_loan_applications(
     status_filter: Optional[str] = None,
     current_user: User = Depends(get_current_user),
-    db=Depends(get_db)
 ) -> List[LoanApplication]:
     """Get loan applications based on user role"""
-    finance_service = FinanceService(db)
-    query = {}
-    if current_user.role == "farmer":
-        query["farmer_id"] = current_user.id
-    elif current_user.role != "financier":
-        return [] # Or raise 403
+    try:
+        await finance_service.initialize()
 
-    if status_filter:
-        query["status"] = status_filter
+        farmer_id = None
+        financier_id = None
 
-    applications_cursor = db.loan_applications.find(query)
-    return [LoanApplication(**app) async for app in applications_cursor]
+        if current_user.role == "farmer":
+            farmer_id = current_user.id
+        elif current_user.role == "financier":
+            financier_id = current_user.id
+
+        status = LoanStatus(status_filter) if status_filter else None
+
+        applications = await finance_service.get_loan_applications(
+            farmer_id=farmer_id, 
+            financier_id=financier_id,
+            status=status
+        )
+        return applications
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid status filter: {status_filter}")
+    except Exception as e:
+        logger.error(f"Error getting loan applications: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve loan applications.")
 
 
 @router.get("/loan-applications/{application_id}", response_model=LoanApplication)
@@ -259,52 +270,19 @@ async def get_loan_eligibility(
     if current_user.role != 'farmer':
         raise HTTPException(status_code=403, detail="Only farmers can check eligibility.")
 
-    finance_service = FinanceService(db)
-    
-    # Fetch credit score and available loan products
-    eligibility_data = await FinanceService(db).get_farmer_credit_score(current_user.id)
-    products_cursor = db.loan_products.find({"is_active": True})
-    all_products = [LoanProduct(**p) async for p in products_cursor]
-
-    score = eligibility_data.get("score", 600)
-    
-    # Determine credit range and risk
-    if score >= 750:
-        credit_range = "Excellent"
-        risk_assessment = "Very Low"
-        interest_rate_range = {"min": 3.5, "max": 7.0}
-    elif score >= 680:
-        credit_range = "Good"
-        risk_assessment = "Low"
-        interest_rate_range = {"min": 5.5, "max": 12.0}
-    elif score >= 600:
-        credit_range = "Fair"
-        risk_assessment = "Medium"
-        interest_rate_range = {"min": 12.0, "max": 18.0}
-    else:
-        credit_range = "Poor"
-        risk_assessment = "High"
-        interest_rate_range = {"min": 18.0, "max": 25.0}
-
-    loan_eligible = score >= 600
-
-    # Filter products based on eligibility (e.g., min credit score requirement)
-    available_products = [
-        p.dict() for p in all_products 
-        if p.min_credit_score is None or score >= p.min_credit_score
-    ]
-
-    return LoanEligibilityResponse(
-        farmer_id=current_user.id,
-        credit_score=score,
-        credit_range=credit_range,
-        loan_eligible=loan_eligible,
-        max_loan_amount=eligibility_data.get("historical_max_loan", 5000.00 if not loan_eligible else 50000.00),
-        interest_rate_range=interest_rate_range,
-        available_products=available_products,
-        recommendations=eligibility_data.get("factors", []),
-        risk_assessment=risk_assessment
-    )
+    try:
+        await finance_service.initialize()
+        
+        eligibility_data = await finance_service.get_loan_eligibility(current_user.id)
+        
+        return LoanEligibilityResponse(**eligibility_data)
+        
+    except Exception as e:
+        logger.error(f"Error getting loan eligibility: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Could not load eligibility data."
+        )
 
 
 @router.post("/payments", response_model=Dict[str, str])

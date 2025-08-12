@@ -9,6 +9,25 @@ const api = axios.create({
   },
 });
 
+// Immediately try to set the token on module load to prevent race conditions
+const storedAuth = localStorage.getItem('grainchain-auth');
+if (storedAuth) {
+  try {
+    const { state } = JSON.parse(storedAuth);
+    if (state?.token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
+    }
+  } catch (error) {
+    console.error('Failed to parse stored auth data on init:', error);
+  }
+}
+
+// Immediately try to set the token on module load
+const token = localStorage.getItem('grainchain-auth');
+if (token) {
+  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+}
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
@@ -189,5 +208,7 @@ export const uploadApi = {
     });
   },
 };
+
+
 
 export default api;

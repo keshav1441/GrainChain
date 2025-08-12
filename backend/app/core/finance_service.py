@@ -36,7 +36,7 @@ class FinanceService:
     
     async def initialize(self):
         """Initialize the finance service"""
-        self.db = await get_database()
+        self.db = get_database()
     
     async def create_loan_application(
         self, 
@@ -399,6 +399,9 @@ class FinanceService:
             loan_apps = []
             
             async for doc in cursor:
+                # Pydantic model expects a string for the id, not ObjectId
+                if '_id' in doc and isinstance(doc['_id'], ObjectId):
+                    doc['id'] = str(doc.pop('_id'))
                 loan_apps.append(LoanApplication(**doc))
             
             return loan_apps
