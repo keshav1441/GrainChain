@@ -1,18 +1,62 @@
-# GrainChain MVP - AI-Powered Agricultural Trade Platform
+# GrainChain - AI-Powered Agricultural Trade Platform
 
 ## Overview
-GrainChain connects farmers directly with institutional buyers while providing seamless access to finance through an AI-powered platform.
+GrainChain connects farmers directly with institutional buyers while providing seamless access to finance through an AI-powered platform. Our solution streamlines agricultural trade, reduces intermediaries, and democratizes access to financial services for farmers.
+
+## Key Features
+
+### For Farmers
+- List crops with AI-recommended pricing
+- Access to multiple loan products and financing options
+- Credit assessment and eligibility checking
+- Direct connection with institutional buyers
+- Transaction history and payment tracking
+
+### For Buyers
+- Browse available crop inventory
+- Filter by location, quality, and quantity
+- Direct communication with farmers
+- Streamlined procurement process
+- Payment processing and transaction management
+
+### For Financiers
+- AI-powered credit scoring system
+- Loan application review workflow
+- Risk-based pricing models
+- Disbursement and repayment tracking
+- Portfolio management dashboard
 
 ## Architecture
-- **Backend**: FastAPI + PostgreSQL + Redis
-- **Frontend**: React.js + TypeScript + Tailwind CSS
-- **AI/ML**: Price prediction, credit scoring, recommendations
-- **Deployment**: Railway/Render (backend), Vercel/Netlify (frontend)
 
-## User Types
-- **Farmers**: List crops, get price recommendations, find buyers
-- **Buyers**: Browse inventory, contact farmers, manage procurement
-- **Financiers**: Provide loans, assess credit, manage applications
+### Backend
+- **Framework**: FastAPI
+- **Database**: MongoDB
+- **Caching**: Redis
+- **Authentication**: JWT with HTTPBearer
+- **API Documentation**: OpenAPI/Swagger
+
+### Frontend
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with HeadlessUI components
+- **State Management**: Zustand
+- **Form Handling**: React Hook Form
+- **API Integration**: Axios + React Query
+- **Routing**: React Router v6
+
+### AI/ML Components
+- Price prediction algorithms
+- Credit scoring and risk assessment
+- Crop recommendation engine
+- Market trend analysis
+- Fraud detection
+
+## Finance Module
+Our comprehensive finance module supports:
+- Multiple loan products (crop loans, equipment loans, working capital)
+- Complete loan lifecycle management
+- AI-powered credit assessment
+- Payment processing with gateway integrations
+- Transaction history and reporting
 
 ## Quick Start
 
@@ -29,31 +73,40 @@ uvicorn app.main:app --reload
 ```bash
 cd frontend
 npm install
-npm start
+npm run dev
 ```
 
 ### Database Setup
 ```bash
-# PostgreSQL setup
-createdb grainchain_db
-# Run migrations
-alembic upgrade head
+# MongoDB setup instructions
+# Run migrations if applicable
 ```
 
-## Development Timeline
-- **Week 1**: Authentication & basic UI
-- **Week 2**: Core models & farmer functionality
-- **Week 3**: Buyer dashboard & messaging
-- **Week 4**: AI components integration
-- **Week 5**: Finance module
-- **Week 6**: Payment integration & deployment
-
-## API Documentation
-Once running, visit: http://localhost:8000/docs
+## Development Workflow
+1. Clone the repository
+2. Set up environment variables (copy `.env.example` to `.env`)
+3. Install dependencies for both backend and frontend
+4. Run the development servers
+5. Access the API docs at http://localhost:8000/docs
+6. Access the frontend at http://localhost:5173
 
 ## Environment Variables
 Copy `.env.example` to `.env` and configure:
-- DATABASE_URL
+- MONGODB_URI
 - REDIS_URL
 - JWT_SECRET_KEY
-- CLOUDINARY_URL (for file uploads)
+- API_V1_STR
+- CORS_ORIGINS
+- Other service-specific credentials
+
+## Deployment
+- **Backend**: Railway/Render
+- **Frontend**: Vercel/Netlify
+- **Database**: MongoDB Atlas
+- **Caching**: Redis Cloud
+
+## Contributing
+Please read our contribution guidelines before submitting pull requests.
+
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
