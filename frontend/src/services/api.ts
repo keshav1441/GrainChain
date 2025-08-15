@@ -214,42 +214,60 @@ export const uploadApi = {
 // Buyer API endpoints
 export const buyerApi = {
   getDashboardStats: () => api.get('/buyer/dashboard/stats'),
+  getAnalytics: (period?: string) => api.get('/buyer/analytics', { params: { period } }),
+  getFarmers: (params?: any) => api.get('/buyer/farmers', { params }),
+  getListings: (params?: any) => api.get('/buyer/listings', { params }),
+  getInquiries: () => api.get('/buyer/inquiries'),
+};
+
+// Financier API endpoints
+export const financierApi = {
+  getDashboardStats: () => api.get('/finance/financier/dashboard/stats'),
   
-  getFarmers: (params?: {
+  getPendingApplications: (params?: {
     limit?: number;
-    skip?: number;
-  }) => api.get('/buyer/farmers', { params }),
+  }) => api.get('/finance/financier/dashboard/pending-applications', { params }),
   
-  getListings: (params?: {
-    crop_name?: string;
-    category?: string;
-    state?: string;
-    city?: string;
-    min_price?: number;
-    max_price?: number;
-    min_quantity?: number;
-    max_quantity?: number;
-    skip?: number;
+  getRecentDisbursements: (params?: {
     limit?: number;
-    sort_by?: string;
-    sort_order?: string;
-  }) => api.get('/buyer/listings', { params }),
+  }) => api.get('/finance/financier/dashboard/recent-disbursements', { params }),
   
-  getListingDetails: (id: string) => api.get(`/buyer/listings/${id}`),
+  getAllApplications: (params?: {
+    status_filter?: string;
+  }) => api.get('/finance/loan-applications', { params }),
   
-  createInquiry: (data: any) => api.post('/buyer/inquiries', data),
+  getApplication: (id: string) => api.get(`/finance/loan-applications/${id}`),
   
-  getInquiries: (params?: {
-    status?: string;
-    skip?: number;
-    limit?: number;
-  }) => api.get('/buyer/inquiries', { params }),
+  reviewApplication: (id: string, data: {
+    decision: 'approve' | 'reject';
+    notes?: string;
+  }) => api.post(`/finance/loan-applications/${id}/review`, data),
   
-  updateInquiry: (id: string, data: any) => api.put(`/buyer/inquiries/${id}`, data),
+  disburseApplication: (id: string) => api.post(`/finance/loan-applications/${id}/disburse`),
   
-  cancelInquiry: (id: string) => api.delete(`/buyer/inquiries/${id}`),
+  // Loan products
+  getLoanProducts: () => api.get('/finance/products'),
   
-  getAnalytics: () => api.get('/buyer/analytics'),
+  // Payment history
+  getPaymentHistory: (applicationId: number) => api.get(`/finance/applications/${applicationId}/payments`),
+  
+  // Farmers data
+  getFarmersData: (params?: { search?: string; location?: string; credit_score_min?: number }) => 
+    api.get('/finance/financier/farmers', { params }),
+  
+  // Analytics data
+  getAnalyticsData: (period?: string) => 
+    api.get('/finance/financier/analytics', { params: { period } }),
+  
+  // Loan products management
+  getLoanProductsManagement: (status_filter?: string) => 
+    api.get('/finance/financier/loan-products', { params: { status_filter } }),
+  
+  updateLoanProduct: (id: string, data: any) => 
+    api.put(`/finance/financier/loan-products/${id}`, data),
+  
+  getAIInsights: () => 
+    api.get('/finance/financier/analytics/insights'),
 };
 
 export default api;

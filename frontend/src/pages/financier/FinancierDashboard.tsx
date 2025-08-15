@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CurrencyDollarIcon,
@@ -10,106 +10,186 @@ import {
   XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
+import { financierApi } from '../../services/api';
+import { toast } from 'react-hot-toast';
+
+interface DashboardStats {
+  active_loans_value: number;
+  active_loans_count: number;
+  loan_applications_count: number;
+  pending_applications_count: number;
+  active_farmers_count: number;
+  new_farmers_this_month: number;
+  default_rate: number;
+  default_rate_change: number;
+}
+
+interface LoanApplication {
+  application_id: string;
+  farmer_id: string;
+  loan_type: string;
+  requested_amount: number;
+  loan_purpose: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  farmer_name?: string;
+  farmer_location?: string;
+  credit_score?: number;
+  farm_size?: string;
+}
 
 export const FinancierDashboard: React.FC = () => {
-  const stats = [
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [pendingApplications, setPendingApplications] = useState<LoanApplication[]>([]);
+  const [recentDisbursements, setRecentDisbursements] = useState<LoanApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [statsResponse, pendingResponse, disbursementsResponse] = await Promise.all([
+        financierApi.getDashboardStats(),
+        financierApi.getPendingApplications({ limit: 10 }),
+        financierApi.getRecentDisbursements({ limit: 5 })
+      ]);
+
+      setStats(statsResponse.data);
+      setPendingApplications(pendingResponse.data);
+      setRecentDisbursements(disbursementsResponse.data);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApproveApplication = async (applicationId: string) => {
+    try {
+      setActionLoading(applicationId);
+      await financierApi.reviewApplication(applicationId, {
+        decision: 'approve',
+        notes: 'Application approved from dashboard'
+      });
+      toast.success('Application approved successfully');
+      loadDashboardData(); // Refresh data
+    } catch (error) {
+      console.error('Error approving application:', error);
+      toast.error('Failed to approve application');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRejectApplication = async (applicationId: string) => {
+    try {
+      setActionLoading(applicationId);
+      await financierApi.reviewApplication(applicationId, {
+        decision: 'reject',
+        notes: 'Application rejected from dashboard'
+      });
+      toast.success('Application rejected');
+      loadDashboardData(); // Refresh data
+    } catch (error) {
+      console.error('Error rejecting application:', error);
+      toast.error('Failed to reject application');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 10000000) {
+      return `₹${(amount / 10000000).toFixed(1)} Cr`;
+    } else if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(1)} L`;
+    } else {
+      return `₹${amount.toLocaleString()}`;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'submitted':
+      case 'ready for approval':
+        return 'bg-green-100 text-green-800';
+      case 'under_review':
+      case 'under review':
+        return 'bg-blue-100 text-blue-800';
+      case 'documentation_pending':
+      case 'documentation pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'disbursed':
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const dashboardStats = stats ? [
     {
       name: 'Active Loans',
-      value: '₹2.5 Cr',
-      change: '+12% this month',
-      changeType: 'positive',
+      value: formatCurrency(stats.active_loans_value),
+      change: `${stats.active_loans_count} loans active`,
+      changeType: 'neutral',
       icon: CurrencyDollarIcon,
     },
     {
       name: 'Loan Applications',
-      value: '45',
-      change: '8 pending review',
+      value: stats.loan_applications_count.toString(),
+      change: `${stats.pending_applications_count} pending review`,
       changeType: 'neutral',
       icon: DocumentTextIcon,
     },
     {
       name: 'Active Farmers',
-      value: '234',
-      change: '+18 new this month',
+      value: stats.active_farmers_count.toString(),
+      change: `+${stats.new_farmers_this_month} new this month`,
       changeType: 'positive',
       icon: UserGroupIcon,
     },
     {
       name: 'Default Rate',
-      value: '2.1%',
-      change: '-0.3% from last month',
-      changeType: 'positive',
+      value: `${stats.default_rate}%`,
+      change: `${stats.default_rate_change > 0 ? '+' : ''}${stats.default_rate_change}% from last month`,
+      changeType: stats.default_rate_change < 0 ? 'positive' : 'negative',
       icon: ChartBarIcon,
     },
-  ];
+  ] : [];
 
-  const pendingApplications = [
-    {
-      id: 1,
-      farmer: 'Rajesh Kumar',
-      location: 'Punjab',
-      loanType: 'Crop Loan',
-      requestedAmount: '₹5,00,000',
-      purpose: 'Wheat cultivation',
-      creditScore: 720,
-      farmSize: '15 acres',
-      submittedDate: '2024-04-08',
-      status: 'Under Review',
-    },
-    {
-      id: 2,
-      farmer: 'Priya Sharma',
-      location: 'Haryana',
-      loanType: 'Equipment Loan',
-      requestedAmount: '₹8,50,000',
-      purpose: 'Tractor purchase',
-      creditScore: 680,
-      farmSize: '25 acres',
-      submittedDate: '2024-04-07',
-      status: 'Documentation Pending',
-    },
-    {
-      id: 3,
-      farmer: 'Amit Patel',
-      location: 'Gujarat',
-      loanType: 'Working Capital',
-      requestedAmount: '₹3,00,000',
-      purpose: 'Seasonal expenses',
-      creditScore: 750,
-      farmSize: '10 acres',
-      submittedDate: '2024-04-06',
-      status: 'Ready for Approval',
-    },
-  ];
 
-  const recentDisbursements = [
-    {
-      id: 1,
-      farmer: 'Suresh Singh',
-      amount: '₹4,50,000',
-      loanType: 'Crop Loan',
-      disbursedDate: '2024-04-05',
-      tenure: '12 months',
-      interestRate: '9.5%',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      farmer: 'Meera Devi',
-      amount: '₹6,00,000',
-      loanType: 'Equipment Loan',
-      disbursedDate: '2024-04-03',
-      tenure: '36 months',
-      interestRate: '11.2%',
-      status: 'Active',
-    },
-  ];
-
-  const getCreditScoreColor = (score: number) => {
+  const getCreditScoreColor = (score?: number) => {
+    if (!score) return 'text-gray-600 bg-gray-100';
     if (score >= 750) return 'text-green-600 bg-green-100';
     if (score >= 650) return 'text-yellow-600 bg-yellow-100';
     return 'text-red-600 bg-red-100';
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,17 +205,20 @@ export const FinancierDashboard: React.FC = () => {
             </p>
           </div>
           <div className="mt-4 flex md:mt-0 md:ml-4">
-            <Button as={Link} to="/financier/products" variant="primary">
+            <Link 
+              to="/financier/products" 
+              className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+            >
               <DocumentTextIcon className="h-5 w-5 mr-2" />
               Manage Products
-            </Button>
+            </Link>
           </div>
         </div>
 
         {/* Stats */}
         <div className="mt-8">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((item) => (
+            {dashboardStats.map((item) => (
               <div
                 key={item.name}
                 className="relative bg-white pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden"
@@ -185,73 +268,89 @@ export const FinancierDashboard: React.FC = () => {
                   </Link>
                 </div>
                 <div className="space-y-4">
-                  {pendingApplications.map((application) => (
-                    <div
-                      key={application.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h4 className="text-lg font-medium text-gray-900">
-                              {application.farmer}
-                            </h4>
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCreditScoreColor(
-                                application.creditScore
-                              )}`}
-                            >
-                              Credit: {application.creditScore}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-1">
-                            {application.loanType} • {application.location}
-                          </p>
-                          <p className="text-sm text-gray-600 mb-1">
-                            Farm Size: {application.farmSize} • Purpose: {application.purpose}
-                          </p>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Submitted: {application.submittedDate}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-lg font-semibold text-gray-900">
-                                {application.requestedAmount}
-                              </p>
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  application.status === 'Ready for Approval'
-                                    ? 'bg-green-100 text-green-800'
-                                    : application.status === 'Under Review'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}
-                              >
-                                {application.status}
-                              </span>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">
-                                View Details
-                              </Button>
-                              {application.status === 'Ready for Approval' && (
-                                <>
-                                  <Button variant="primary" size="sm">
-                                    <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                    Approve
-                                  </Button>
-                                  <Button variant="danger" size="sm">
-                                    <XCircleIcon className="h-4 w-4 mr-1" />
-                                    Reject
-                                  </Button>
-                                </>
+                  {pendingApplications.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <DocumentTextIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No pending applications</p>
+                    </div>
+                  ) : (
+                    pendingApplications.map((application) => (
+                      <div
+                        key={application.application_id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h4 className="text-lg font-medium text-gray-900">
+                                {application.farmer_name || `Farmer ${application.farmer_id.slice(-6)}`}
+                              </h4>
+                              {application.credit_score && (
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCreditScoreColor(
+                                    application.credit_score
+                                  )}`}
+                                >
+                                  Credit: {application.credit_score}
+                                </span>
                               )}
+                            </div>
+                            <p className="text-sm text-gray-600 mb-1">
+                              {application.loan_type} • {application.farmer_location || 'Location not specified'}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-1">
+                              {application.farm_size && `Farm Size: ${application.farm_size} • `}Purpose: {application.loan_purpose}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-2">
+                              Submitted: {formatDate(application.created_at)}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-lg font-semibold text-gray-900">
+                                  {formatCurrency(application.requested_amount)}
+                                </p>
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}
+                                >
+                                  {application.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                              <div className="flex space-x-2">
+                                <Link 
+                                  to={`/financier/applications/${application.application_id}`}
+                                  className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                                >
+                                  View Details
+                                </Link>
+                                {(application.status === 'submitted' || application.status === 'Ready for Approval') && (
+                                  <>
+                                    <Button 
+                                      variant="primary" 
+                                      size="sm"
+                                      onClick={() => handleApproveApplication(application.application_id)}
+                                      disabled={actionLoading === application.application_id}
+                                    >
+                                      <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                      {actionLoading === application.application_id ? 'Processing...' : 'Approve'}
+                                    </Button>
+                                    <Button 
+                                      variant="danger" 
+                                      size="sm"
+                                      onClick={() => handleRejectApplication(application.application_id)}
+                                      disabled={actionLoading === application.application_id}
+                                    >
+                                      <XCircleIcon className="h-4 w-4 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -273,34 +372,41 @@ export const FinancierDashboard: React.FC = () => {
                   </Link>
                 </div>
                 <div className="space-y-4">
-                  {recentDisbursements.map((loan) => (
-                    <div
-                      key={loan.id}
-                      className="border border-gray-200 rounded-lg p-4"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium text-gray-900">
-                          {loan.farmer}
-                        </h4>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {loan.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        {loan.loanType}
-                      </p>
-                      <p className="text-sm font-medium text-gray-900 mb-1">
-                        {loan.amount}
-                      </p>
-                      <p className="text-sm text-gray-600 mb-1">
-                        Rate: {loan.interestRate} • Tenure: {loan.tenure}
-                      </p>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <ClockIcon className="h-4 w-4 mr-1" />
-                        Disbursed: {loan.disbursedDate}
-                      </div>
+                  {recentDisbursements.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <CurrencyDollarIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p>No recent disbursements</p>
                     </div>
-                  ))}
+                  ) : (
+                    recentDisbursements.map((loan) => (
+                      <div
+                        key={loan.application_id}
+                        className="border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium text-gray-900">
+                            {loan.farmer_name || `Farmer ${loan.farmer_id.slice(-6)}`}
+                          </h4>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          {loan.loan_type}
+                        </p>
+                        <p className="text-sm font-medium text-gray-900 mb-1">
+                          {formatCurrency(loan.requested_amount)}
+                        </p>
+                        <p className="text-sm text-gray-600 mb-1">
+                          Purpose: {loan.loan_purpose}
+                        </p>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <ClockIcon className="h-4 w-4 mr-1" />
+                          Disbursed: {formatDate(loan.updated_at)}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -314,22 +420,22 @@ export const FinancierDashboard: React.FC = () => {
               Quick Actions
             </h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Button as={Link} to="/financier/applications" variant="outline" className="justify-start">
+              <Link to="/financier/applications" className="inline-flex items-center justify-start px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
                 <DocumentTextIcon className="h-5 w-5 mr-2" />
                 Review Applications
-              </Button>
-              <Button as={Link} to="/financier/farmers" variant="outline" className="justify-start">
+              </Link>
+              <Link to="/financier/farmers" className="inline-flex items-center justify-start px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
                 <UserGroupIcon className="h-5 w-5 mr-2" />
                 Find Farmers
-              </Button>
-              <Button as={Link} to="/financier/analytics" variant="outline" className="justify-start">
+              </Link>
+              <Link to="/financier/analytics" className="inline-flex items-center justify-start px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
                 <ChartBarIcon className="h-5 w-5 mr-2" />
                 View Analytics
-              </Button>
-              <Button as={Link} to="/financier/products" variant="outline" className="justify-start">
+              </Link>
+              <Link to="/financier/products" className="inline-flex items-center justify-start px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
                 <CurrencyDollarIcon className="h-5 w-5 mr-2" />
                 Loan Products
-              </Button>
+              </Link>
             </div>
           </div>
         </div>
