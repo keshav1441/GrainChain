@@ -22,12 +22,6 @@ if (storedAuth) {
   }
 }
 
-// Immediately try to set the token on module load
-const token = localStorage.getItem('grainchain-auth');
-if (token) {
-  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-}
-
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {

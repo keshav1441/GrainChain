@@ -13,11 +13,13 @@ from app.schemas.user import TokenData
 
 security = HTTPBearer()
 
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncIOMotorDatabase = Depends(get_db)
-) -> User:
-    """Get current authenticated user."""
+) -> dict:
+    """Get current authenticated user from MongoDB as a dict."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -27,33 +29,32 @@ async def get_current_user(
     try:
         payload = verify_token(credentials.credentials)
         user_id: str = payload.get("sub")
-        if user_id is None:
+        if not user_id:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
     except JWTError:
         raise credentials_exception
     
-    # Get user from database using Motor
     try:
         users_collection = get_collection("users")
         user_doc = await users_collection.find_one({"_id": ObjectId(token_data.user_id)})
     except Exception:
         raise credentials_exception
     
-    if user_doc is None:
+    if not user_doc:
         raise credentials_exception
     
-    # Convert ObjectId to string and create Pydantic model
+    # Convert ObjectId to string for JSON compatibility
     user_doc["_id"] = str(user_doc["_id"])
-    user = User(**user_doc)
     
-    if not user.is_active:
+    if not user_doc.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user"
         )
     
-    return user
+    return user_doc  # return as dict, not Pydantic model
+
 
 async def get_current_active_user(
     current_user: User = Depends(get_current_user)

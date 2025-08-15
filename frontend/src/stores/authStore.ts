@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { authApi } from '../services/api';
 
 export interface User {
@@ -9,6 +8,7 @@ export interface User {
   full_name: string;
   role: 'farmer' | 'buyer' | 'financier' | 'admin';
   verification_status: 'pending' | 'verified' | 'rejected';
+  pincode: number;
   is_active: boolean;
   profile_image_url?: string;
   created_at: string;
@@ -28,6 +28,7 @@ interface AuthState {
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   checkAuth: () => Promise<void>;
+  initializeAuth: () => void;
 }
 
 export interface RegisterData {
@@ -44,101 +45,117 @@ export interface RegisterData {
   pincode?: string;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+  isLoading: false,
+
+  login: async (email: string, password: string) => {
+    set({ isLoading: true });
+    try {
+      const response = await authApi.login({ email, password });
+      const { access_token, user } = response.data;
+
+      // Save to localStorage separately
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      authApi.setAuthToken(access_token);
+
+      set({
+        user,
+        token: access_token,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  register: async (userData: RegisterData) => {
+    set({ isLoading: true });
+    try {
+      const response = await authApi.register(userData);
+      const { access_token, user } = response.data;
+
+      // Save to localStorage separately
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      authApi.setAuthToken(access_token);
+
+      set({
+        user,
+        token: access_token,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  logout: () => {
+    authApi.clearAuthToken();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    set({
       user: null,
       token: null,
       isAuthenticated: false,
       isLoading: false,
+    });
+  },
 
-      login: async (email: string, password: string) => {
-        set({ isLoading: true });
-        try {
-          const response = await authApi.login({ email, password });
-          const { access_token, user } = response.data;
-          
-          // Set token in axios defaults
-          authApi.setAuthToken(access_token);
-          
-          set({
-            user,
-            token: access_token,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
-      register: async (userData: RegisterData) => {
-        set({ isLoading: true });
-        try {
-          const response = await authApi.register(userData);
-          const { access_token, user } = response.data;
-          
-          // Set token in axios defaults
-          authApi.setAuthToken(access_token);
-          
-          set({
-            user,
-            token: access_token,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
-      logout: () => {
-        // Clear token from axios defaults
-        authApi.clearAuthToken();
-        
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
-      },
-
-      updateUser: (userData: Partial<User>) => {
-        const currentUser = get().user;
-        if (currentUser) {
-          set({
-            user: { ...currentUser, ...userData },
-          });
-        }
-      },
-
-      checkAuth: async () => {
-        const token = get().token;
-        if (!token) return;
-
-        try {
-          authApi.setAuthToken(token);
-          const response = await authApi.getCurrentUser();
-          set({
-            user: response.data.user,
-            isAuthenticated: true,
-          });
-        } catch (error) {
-          // Token is invalid, clear auth state
-          get().logout();
-        }
-      },
-    }),
-    {
-      name: 'grainchain-auth',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-      }),
+  updateUser: (userData: Partial<User>) => {
+    const currentUser = get().user;
+    if (currentUser) {
+      const updatedUser = { ...currentUser, ...userData };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      set({ user: updatedUser });
     }
-  )
-);
+  },
+
+  checkAuth: async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      authApi.setAuthToken(token);
+      const response = await authApi.getCurrentUser();
+      const user = response.data.user;
+
+      // Ensure localStorage is synced
+      localStorage.setItem('user', JSON.stringify(user));
+
+      set({
+        user,
+        token,
+        isAuthenticated: true,
+      });
+    } catch (error) {
+      get().logout();
+    }
+  },
+
+  initializeAuth: () => {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+
+    if (token && user) {
+      authApi.setAuthToken(token);
+      set({ token, user, isAuthenticated: true });
+    } else {
+      set({ isAuthenticated: false });
+    }
+  },
+}));
+
+// Initialize immediately
+useAuthStore.getState().initializeAuth();

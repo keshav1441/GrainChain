@@ -22,6 +22,10 @@ from app.schemas.user import (
     FinancierVerificationRequest,
     VerificationStatusResponse
 )
+from sqlalchemy.orm import Session
+from bson import ObjectId
+from app.models.user import User, Farmer, Buyer, Financier
+from app.core.database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -89,32 +93,6 @@ async def get_user_profile(
         
     except Exception as e:
         logger.error(f"Error getting user profile: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
-
-
-@router.put("/profile", response_model=UserProfileResponse)
-async def update_user_profile(
-    request: ProfileUpdateRequest,
-    current_user: User = Depends(get_current_user)
-):
-    """Update current user's profile"""
-    try:
-        # Mock update - would be replaced with actual database update
-        updated_profile = UserProfileResponse(
-            id=current_user.id,
-            email=current_user.email,
-            full_name=request.full_name or current_user.full_name,
-            role=current_user.role,
-            phone=request.phone or getattr(current_user, 'phone', None),
-            is_verified=getattr(current_user, 'is_verified', False),
-            location=f"{request.city or getattr(current_user, 'city', '')}, {request.state or getattr(current_user, 'state', '')}".strip(', ')
-        )
-        
-        logger.info(f"User profile updated: {current_user.id}")
-        return updated_profile
-        
-    except Exception as e:
-        logger.error(f"Error updating user profile: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
@@ -255,27 +233,80 @@ async def get_financiers(
 
 # PROFILE MANAGEMENT ENDPOINTS
 
-@router.put("/profile/update")
+
+
+@router.put("/profile/update", response_model=UserProfileResponse)
 async def update_profile(
     request: ProfileUpdateRequest,
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),  # Ensure this returns a dict or Pydantic model, not SQLAlchemy object
+    db=Depends(get_db)  # This should be an AsyncIOMotorDatabase
 ):
     """Update user profile with role-specific information"""
     try:
-        # Mock profile update - would be replaced with actual database update
-        logger.info(f"Profile update request for user {current_user.id}: {request.dict(exclude_unset=True)}")
-        
-        # In a real implementation, you would:
-        # 1. Update the User table with basic profile info
-        # 2. Update role-specific tables (Farmer, Buyer, Financier) with additional info
-        # 3. Handle file uploads and store document URLs
-        
-        return {
-            "message": "Profile updated successfully",
-            "user_id": current_user.id,
-            "updated_fields": list(request.dict(exclude_unset=True).keys())
-        }
-        
+        updated_fields = request.dict(exclude_unset=True)
+
+        # 1. Update base user fields
+        base_fields = ["full_name", "phone", "address", "city", "state", "pincode", "profile_image_url"]
+        user_updates = {field: updated_fields[field] for field in base_fields if field in updated_fields}
+
+        if user_updates:
+            result = await db["users"].update_one(
+                {"_id": ObjectId(current_user["_id"])},
+                {"$set": user_updates}
+            )
+            print(result.matched_count, result.modified_count)
+
+        # 2. Update role-specific profile
+        role = current_user.get("role")
+
+        if role == "farmer":
+            farmer_updates = {field: updated_fields[field] for field in [
+                "farm_name", "farm_size_acres", "farming_experience_years",
+                "primary_crops", "farming_methods", "annual_income",
+                "bank_account_number", "ifsc_code"
+            ] if field in updated_fields}
+            if farmer_updates:
+                await db["farmers"].update_one(
+                    {"user_id": current_user["_id"]},
+                    {"$set": farmer_updates}
+                )
+
+        elif role == "buyer":
+            buyer_updates = {field: updated_fields[field] for field in [
+                "company_name", "company_type", "gst_number", "pan_number",
+                "annual_procurement_volume", "procurement_categories", "preferred_regions"
+            ] if field in updated_fields}
+            if buyer_updates:
+                await db["buyers"].update_one(
+                    {"user_id": current_user["_id"]},
+                    {"$set": buyer_updates}
+                )
+
+        elif role == "financier":
+            financier_updates = {field: updated_fields[field] for field in [
+                "institution_name", "institution_type", "license_number", "registration_number",
+                "contact_person_name", "contact_person_designation", "contact_email", "contact_phone",
+                "years_in_operation", "total_assets", "lending_portfolio_size", "interest_rate_range"
+            ] if field in updated_fields}
+            if financier_updates:
+                await db["financiers"].update_one(
+                    {"user_id": current_user["_id"]},
+                    {"$set": financier_updates}
+                )
+
+        logger.info(f"Profile updated successfully for user {current_user['_id']}")
+
+        return UserProfileResponse(
+            id=str(current_user["_id"]),
+            email=current_user["email"],
+            full_name=updated_fields.get("full_name", current_user.get("full_name")),
+            role=role,
+            phone=updated_fields.get("phone", current_user.get("phone")),
+            is_verified=current_user.get("is_verified", False),
+            location=f"{updated_fields.get('city', current_user.get('city', ''))}, "
+                     f"{updated_fields.get('state', current_user.get('state', ''))}".strip(", ")
+        )
+
     except Exception as e:
         logger.error(f"Error updating profile: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update profile")

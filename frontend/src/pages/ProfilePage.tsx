@@ -16,20 +16,19 @@ import {
 } from '@heroicons/react/24/outline';
 
 export const ProfilePage: React.FC = () => {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<any>(null);
 
   useEffect(() => {
-    if (user && user.role !== 'buyer') {
+    if (user && user.role !== 'buyer' && token) {
       fetchVerificationStatus();
     }
-  }, [user]);
+  }, [user, token]);
 
   const fetchVerificationStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
       console.log('Fetching verification status with token:', token ? 'Present' : 'Missing');
       
       if (!token) {

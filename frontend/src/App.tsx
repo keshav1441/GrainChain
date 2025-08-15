@@ -1,4 +1,4 @@
-// import React from 'react';
+import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { useAuthStore } from './stores/authStore';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -44,7 +44,12 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, initializeAuth } = useAuthStore();
+  
+  // Initialize authentication state on app load
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
 
   const getDashboardRoute = () => {
     if (!user) return '/';

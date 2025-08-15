@@ -5,6 +5,8 @@ import { Button } from '../ui/Button';
 import { FileUpload } from '../ui/FileUpload';
 import { useAuthStore } from '../../stores/authStore';
 
+
+
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -17,7 +19,7 @@ interface ProfileFormData {
   address: string;
   city: string;
   state: string;
-  pincode: string;
+  pincode: number;
   profile_image_url: string;
   
   // Farmer specific fields
@@ -69,7 +71,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     address: '',
     city: '',
     state: '',
-    pincode: '',
+    pincode: 0,
     profile_image_url: '',
   });
 
@@ -81,7 +83,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         address: user.address || '',
         city: user.city || '',
         state: user.state || '',
-        pincode: user.pincode || '',
+        pincode: user.pincode || 0,
         profile_image_url: user.profile_image_url || '',
         // Initialize role-specific fields based on user role
         ...(user.role === 'farmer' && {
@@ -124,7 +126,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const handleInputChange = (field: keyof ProfileFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
-
+  const updateUser = useAuthStore.getState().updateUser; 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -158,18 +160,27 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         profile_image_url: profileImageUrl,
       };
 
+      const token = JSON.parse(localStorage.getItem('token')) || '';
+
       const response = await fetch('http://localhost:8000/api/v1/users/profile/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(updateData),
       });
 
+
       if (!response.ok) {
-        throw new Error('Failed to update profile');
+        console.error('Failed to update profile');
+        return;
       }
+
+      const updatedUser = await response.json();
+      updateUser(updatedUser);
+
+      console.log('Profile updated successfully');
 
       onSuccess();
       onClose();
