@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
@@ -9,100 +9,159 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
+import { buyerApi } from '../../services/api';
+
+interface DashboardStats {
+  active_orders: number;
+  total_procurement: number;
+  pending_deliveries: number;
+  active_farmers: number;
+}
+
+interface Listing {
+  _id: string;
+  crop_name: string;
+  variety: string;
+  quantity_available: number;
+  price_per_unit: number;
+  grade?: string;
+  location?: string;
+  harvest_date?: string;
+  farmer?: {
+    full_name: string;
+    state?: string;
+  };
+}
+
+interface Inquiry {
+  _id: string;
+  listing_id: string;
+  quantity_requested: number;
+  proposed_price: number;
+  status: string;
+  created_at: string;
+  preferred_delivery_date?: string;
+  listing?: {
+    crop_name: string;
+    farmer?: {
+      full_name: string;
+    };
+  };
+}
 
 export const BuyerDashboard: React.FC = () => {
-  const stats = [
-    {
-      name: 'Active Orders',
-      value: '24',
-      change: '+3 this week',
-      changeType: 'positive',
-      icon: ShoppingCartIcon,
-    },
-    {
-      name: 'Total Procurement',
-      value: '₹12.5L',
-      change: '+25% from last month',
-      changeType: 'positive',
-      icon: ChartBarIcon,
-    },
-    {
-      name: 'Pending Deliveries',
-      value: '8',
-      change: '2 arriving today',
-      changeType: 'neutral',
-      icon: TruckIcon,
-    },
-    {
-      name: 'Active Farmers',
-      value: '156',
-      change: '+12 new this month',
-      changeType: 'positive',
-      icon: UserGroupIcon,
-    },
-  ];
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [recentInquiries, setRecentInquiries] = useState<Inquiry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const availableListings = [
-    {
-      id: 1,
-      farmer: 'Rajesh Kumar',
-      crop: 'Wheat',
-      variety: 'HD-2967',
-      quantity: '50 tons',
-      price: '₹25,000/ton',
-      grade: 'A Grade',
-      location: 'Punjab',
-      harvestDate: '2024-04-15',
-      distance: '45 km',
-    },
-    {
-      id: 2,
-      farmer: 'Priya Sharma',
-      crop: 'Rice',
-      variety: 'Basmati 1121',
-      quantity: '30 tons',
-      price: '₹45,000/ton',
-      grade: 'Premium',
-      location: 'Haryana',
-      harvestDate: '2024-04-10',
-      distance: '67 km',
-    },
-    {
-      id: 3,
-      farmer: 'Amit Patel',
-      crop: 'Maize',
-      variety: 'Pioneer 30V92',
-      quantity: '40 tons',
-      price: '₹22,000/ton',
-      grade: 'A Grade',
-      location: 'Gujarat',
-      harvestDate: '2024-04-20',
-      distance: '89 km',
-    },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [statsResponse, listingsResponse, inquiriesResponse] = await Promise.all([
+          buyerApi.getDashboardStats(),
+          buyerApi.getListings({ limit: 3, sort_by: 'created_at', sort_order: 'desc' }),
+          buyerApi.getInquiries({ limit: 3 })
+        ]);
+        
+        setStats(statsResponse.data);
+        setListings(listingsResponse.data);
+        setRecentInquiries(inquiriesResponse.data);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const recentOrders = [
-    {
-      id: 1,
-      farmer: 'Suresh Singh',
-      crop: 'Wheat',
-      quantity: '25 tons',
-      totalAmount: '₹6,25,000',
-      status: 'In Transit',
-      orderDate: '2024-04-08',
-      expectedDelivery: '2024-04-12',
-    },
-    {
-      id: 2,
-      farmer: 'Meera Devi',
-      crop: 'Rice',
-      quantity: '15 tons',
-      totalAmount: '₹5,25,000',
-      status: 'Delivered',
-      orderDate: '2024-04-05',
-      expectedDelivery: '2024-04-09',
-    },
-  ];
+    fetchDashboardData();
+  }, []);
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 10000000) {
+      return `₹${(amount / 10000000).toFixed(1)}Cr`;
+    } else if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(1)}L`;
+    } else if (amount >= 1000) {
+      return `₹${(amount / 1000).toFixed(1)}K`;
+    }
+    return `₹${amount}`;
+  };
+
+  const getStatsArray = () => {
+    if (!stats) return [];
+    
+    return [
+      {
+        name: 'Active Orders',
+        value: stats.active_orders.toString(),
+        change: 'Current active orders',
+        changeType: 'neutral',
+        icon: ShoppingCartIcon,
+      },
+      {
+        name: 'Total Procurement',
+        value: formatCurrency(stats.total_procurement),
+        change: 'Total value procured',
+        changeType: 'positive',
+        icon: ChartBarIcon,
+      },
+      {
+        name: 'Pending Deliveries',
+        value: stats.pending_deliveries.toString(),
+        change: 'Awaiting delivery',
+        changeType: 'neutral',
+        icon: TruckIcon,
+      },
+      {
+        name: 'Active Farmers',
+        value: stats.active_farmers.toString(),
+        change: 'Farmers with listings',
+        changeType: 'positive',
+        icon: UserGroupIcon,
+      },
+    ];
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'negotiating':
+        return 'bg-blue-100 text-blue-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -118,17 +177,19 @@ export const BuyerDashboard: React.FC = () => {
             </p>
           </div>
           <div className="mt-4 flex md:mt-0 md:ml-4">
-            <Button as={Link} to="/marketplace" variant="primary">
-              <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
-              Browse Marketplace
-            </Button>
+            <Link to="/marketplace">
+              <Button variant="primary">
+                <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
+                Browse Marketplace
+              </Button>
+            </Link>
           </div>
         </div>
 
         {/* Stats */}
         <div className="mt-8">
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map((item) => (
+            {getStatsArray().map((item) => (
               <div
                 key={item.name}
                 className="relative bg-white pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden"
@@ -178,44 +239,55 @@ export const BuyerDashboard: React.FC = () => {
                   </Link>
                 </div>
                 <div className="space-y-4">
-                  {availableListings.map((listing) => (
+                  {listings.map((listing) => (
                     <div
-                      key={listing.id}
+                      key={listing._id}
                       className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
                             <h4 className="text-lg font-medium text-gray-900">
-                              {listing.crop}
+                              {listing.crop_name}
                             </h4>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              {listing.grade}
-                            </span>
+                            {listing.grade && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                {listing.grade}
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm text-gray-600 mb-1">
                             Variety: {listing.variety}
                           </p>
                           <p className="text-sm text-gray-600 mb-1">
-                            Farmer: {listing.farmer} • {listing.location}
+                            Farmer: {listing.farmer?.full_name || 'Unknown'} • {listing.farmer?.state || listing.location || 'Location not specified'}
                           </p>
                           <p className="text-sm text-gray-600 mb-2">
-                            Harvested: {listing.harvestDate} • {listing.distance} away
+                            {listing.harvest_date && `Harvested: ${new Date(listing.harvest_date).toLocaleDateString()}`}
                           </p>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-lg font-semibold text-gray-900">
-                                {listing.price}
+                                ₹{listing.price_per_unit.toLocaleString()}/unit
                               </p>
                               <p className="text-sm text-gray-500">
-                                {listing.quantity} available
+                                {listing.quantity_available} units available
                               </p>
                             </div>
                             <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">
-                                View Details
-                              </Button>
-                              <Button variant="primary" size="sm">
+                              <Link to={`/buyer/listings/${listing._id}`}>
+                                <Button variant="outline" size="sm">
+                                  View Details
+                                </Button>
+                              </Link>
+                              <Button 
+                                variant="primary" 
+                                size="sm"
+                                onClick={() => {
+                                  // Navigate to inquiry form
+                                  window.location.href = `/buyer/listings/${listing._id}?action=inquiry`;
+                                }}
+                              >
                                 Send Inquiry
                               </Button>
                             </div>
@@ -235,49 +307,43 @@ export const BuyerDashboard: React.FC = () => {
               <div className="px-4 py-5 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Recent Orders
+                    Recent Inquiries
                   </h3>
                   <Link
-                    to="/buyer/orders"
+                    to="/buyer/inquiries"
                     className="text-sm text-primary-600 hover:text-primary-500"
                   >
                     View all
                   </Link>
                 </div>
                 <div className="space-y-4">
-                  {recentOrders.map((order) => (
+                  {recentInquiries.map((inquiry) => (
                     <div
-                      key={order.id}
+                      key={inquiry._id}
                       className="border border-gray-200 rounded-lg p-4"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-sm font-medium text-gray-900">
-                          {order.crop}
+                          {inquiry.listing?.crop_name || 'Unknown Crop'}
                         </h4>
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            order.status === 'Delivered'
-                              ? 'bg-green-100 text-green-800'
-                              : order.status === 'In Transit'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(inquiry.status)}`}
                         >
-                          {order.status}
+                          {inquiry.status}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 mb-1">
-                        From: {order.farmer}
+                        From: {inquiry.listing?.farmer?.full_name || 'Unknown Farmer'}
                       </p>
                       <p className="text-sm text-gray-600 mb-1">
-                        Quantity: {order.quantity}
+                        Quantity: {inquiry.quantity_requested} units
                       </p>
                       <p className="text-sm font-medium text-gray-900 mb-2">
-                        {order.totalAmount}
+                        ₹{(inquiry.proposed_price * inquiry.quantity_requested).toLocaleString()}
                       </p>
                       <div className="flex items-center text-xs text-gray-500">
                         <ClockIcon className="h-4 w-4 mr-1" />
-                        Expected: {order.expectedDelivery}
+                        Created: {new Date(inquiry.created_at).toLocaleDateString()}
                       </div>
                     </div>
                   ))}
@@ -294,22 +360,30 @@ export const BuyerDashboard: React.FC = () => {
               Quick Actions
             </h3>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Button as={Link} to="/marketplace" variant="outline" className="justify-start">
-                <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
-                Search Crops
-              </Button>
-              <Button as={Link} to="/buyer/farmers" variant="outline" className="justify-start">
-                <UserGroupIcon className="h-5 w-5 mr-2" />
-                Find Farmers
-              </Button>
-              <Button as={Link} to="/buyer/analytics" variant="outline" className="justify-start">
-                <ChartBarIcon className="h-5 w-5 mr-2" />
-                View Analytics
-              </Button>
-              <Button as={Link} to="/buyer/orders" variant="outline" className="justify-start">
-                <TruckIcon className="h-5 w-5 mr-2" />
-                Track Orders
-              </Button>
+              <Link to="/marketplace">
+                <Button variant="outline" className="justify-start w-full">
+                  <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
+                  Search Crops
+                </Button>
+              </Link>
+              <Link to="/buyer/farmers">
+                <Button variant="outline" className="justify-start w-full">
+                  <UserGroupIcon className="h-5 w-5 mr-2" />
+                  Find Farmers
+                </Button>
+              </Link>
+              <Link to="/buyer/analytics">
+                <Button variant="outline" className="justify-start w-full">
+                  <ChartBarIcon className="h-5 w-5 mr-2" />
+                  View Analytics
+                </Button>
+              </Link>
+              <Link to="/buyer/inquiries">
+                <Button variant="outline" className="justify-start w-full">
+                  <TruckIcon className="h-5 w-5 mr-2" />
+                  Track Inquiries
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

@@ -16,6 +16,65 @@ from app.api.deps import get_current_active_user
 
 router = APIRouter()
 
+@router.get("/dashboard/stats")
+async def get_dashboard_stats(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get dashboard statistics for the buyer."""
+    if current_user.role.value != "buyer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only buyers can access dashboard stats"
+        )
+    
+    # Get collections
+    inquiries_collection = get_collection("inquiries")
+    listings_collection = get_collection("crop_listings")
+    users_collection = get_collection("users")
+    
+    # Get active orders (inquiries that are completed/accepted)
+    active_orders = await inquiries_collection.count_documents({
+        "buyer_id": current_user.id,
+        "status": {"$in": [InquiryStatus.NEGOTIATING.value, InquiryStatus.COMPLETED.value]}
+    })
+    
+    # Get total procurement value (sum of completed inquiries)
+    procurement_pipeline = [
+        {"$match": {
+            "buyer_id": current_user.id,
+            "status": InquiryStatus.COMPLETED.value
+        }},
+        {"$group": {
+            "_id": None,
+            "total": {"$sum": {"$multiply": ["$quantity_requested", "$proposed_price"]}}
+        }}
+    ]
+    procurement_result = await inquiries_collection.aggregate(procurement_pipeline).to_list(1)
+    total_procurement = procurement_result[0]["total"] if procurement_result else 0
+    
+    # Get pending deliveries (completed inquiries)
+    pending_deliveries = await inquiries_collection.count_documents({
+        "buyer_id": current_user.id,
+        "status": InquiryStatus.COMPLETED.value
+    })
+    
+    # Get active farmers count (farmers with active listings)
+    active_farmers_pipeline = [
+        {"$match": {"status": ListingStatus.ACTIVE.value}},
+        {"$group": {"_id": "$farmer_id"}},
+        {"$count": "total"}
+    ]
+    farmers_result = await listings_collection.aggregate(active_farmers_pipeline).to_list(1)
+    active_farmers = farmers_result[0]["total"] if farmers_result else 0
+    
+    return {
+        "active_orders": active_orders,
+        "total_procurement": total_procurement,
+        "pending_deliveries": pending_deliveries,
+        "active_farmers": active_farmers
+    }
+
 @router.get("/farmers", response_model=List[UserProfileResponse])
 async def get_farmers(
     limit: int = 20,
@@ -44,11 +103,13 @@ async def get_farmers(
     # Get farmer profiles for each user
     result = []
     for farmer in farmers:
-        # Convert ObjectId to string for the response
-        farmer["_id"] = str(farmer["_id"])
+        # Convert ObjectId to string and map _id to id for UserResponse
+        farmer_id = str(farmer["_id"])
+        farmer["id"] = farmer_id
+        farmer["_id"] = farmer_id
         
         # Get the farmer's profile if it exists
-        farmer_profile = await farmers_collection.find_one({"user_id": farmer["_id"]})
+        farmer_profile = await farmers_collection.find_one({"user_id": farmer_id})
         
         # Create a UserProfileResponse with the user and profile data
         result.append(UserProfileResponse(
@@ -463,3 +524,126 @@ async def cancel_inquiry(
     )
     
     return {"message": "Inquiry cancelled successfully"}
+
+@router.get("/analytics")
+async def get_buyer_analytics(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get comprehensive analytics data for the buyer."""
+    if current_user.role.value != "buyer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only buyers can access analytics"
+        )
+    
+    # Get collections
+    inquiries_collection = get_collection("inquiries")
+    listings_collection = get_collection("crop_listings")
+    
+    # Calculate total spent (sum of completed inquiries)
+    total_spent_pipeline = [
+        {"$match": {
+            "buyer_id": current_user.id,
+            "status": InquiryStatus.COMPLETED.value
+        }},
+        {"$group": {
+            "_id": None,
+            "total": {"$sum": {"$multiply": ["$quantity_requested", "$proposed_price"]}}
+        }}
+    ]
+    spent_result = await inquiries_collection.aggregate(total_spent_pipeline).to_list(1)
+    total_spent = spent_result[0]["total"] if spent_result else 0
+    
+    # Calculate total orders
+    total_orders = await inquiries_collection.count_documents({
+        "buyer_id": current_user.id,
+        "status": InquiryStatus.COMPLETED.value
+    })
+    
+    # Calculate average order value
+    average_order_value = total_spent / total_orders if total_orders > 0 else 0
+    
+    # Get top crops by value
+    top_crops_pipeline = [
+        {"$match": {
+            "buyer_id": current_user.id,
+            "status": InquiryStatus.COMPLETED.value
+        }},
+        {
+            "$lookup": {
+                "from": "crop_listings",
+                "localField": "listing_id",
+                "foreignField": "_id",
+                "as": "listing"
+            }
+        },
+        {"$unwind": "$listing"},
+        {
+            "$group": {
+                "_id": "$listing.crop_name",
+                "quantity": {"$sum": "$quantity_requested"},
+                "value": {"$sum": {"$multiply": ["$quantity_requested", "$proposed_price"]}}
+            }
+        },
+        {"$sort": {"value": -1}},
+        {"$limit": 5},
+        {
+            "$project": {
+                "crop": "$_id",
+                "quantity": 1,
+                "value": 1,
+                "_id": 0
+            }
+        }
+    ]
+    top_crops_result = await inquiries_collection.aggregate(top_crops_pipeline).to_list(5)
+    
+    # Get monthly spending (last 6 months)
+    from datetime import datetime, timedelta
+    import calendar
+    
+    six_months_ago = datetime.utcnow() - timedelta(days=180)
+    monthly_spending_pipeline = [
+        {"$match": {
+            "buyer_id": current_user.id,
+            "status": InquiryStatus.COMPLETED.value,
+            "created_at": {"$gte": six_months_ago}
+        }},
+        {
+            "$group": {
+                "_id": {
+                    "year": {"$year": "$created_at"},
+                    "month": {"$month": "$created_at"}
+                },
+                "amount": {"$sum": {"$multiply": ["$quantity_requested", "$proposed_price"]}}
+            }
+        },
+        {"$sort": {"_id.year": 1, "_id.month": 1}},
+        {
+            "$project": {
+                "month": {
+                    "$let": {
+                        "vars": {
+                            "monthsInString": [
+                                "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                            ]
+                        },
+                        "in": {"$arrayElemAt": ["$$monthsInString", "$_id.month"]}
+                    }
+                },
+                "amount": 1,
+                "_id": 0
+            }
+        }
+    ]
+    monthly_spending_result = await inquiries_collection.aggregate(monthly_spending_pipeline).to_list(6)
+    
+    return {
+        "totalSpent": total_spent,
+        "totalOrders": total_orders,
+        "averageOrderValue": average_order_value,
+        "topCrops": top_crops_result,
+        "monthlySpending": monthly_spending_result
+    }

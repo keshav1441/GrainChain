@@ -211,4 +211,45 @@ export const uploadApi = {
 
 
 
+// Buyer API endpoints
+export const buyerApi = {
+  getDashboardStats: () => api.get('/buyer/dashboard/stats'),
+  
+  getFarmers: (params?: {
+    limit?: number;
+    skip?: number;
+  }) => api.get('/buyer/farmers', { params }),
+  
+  getListings: (params?: {
+    crop_name?: string;
+    category?: string;
+    state?: string;
+    city?: string;
+    min_price?: number;
+    max_price?: number;
+    min_quantity?: number;
+    max_quantity?: number;
+    skip?: number;
+    limit?: number;
+    sort_by?: string;
+    sort_order?: string;
+  }) => api.get('/buyer/listings', { params }),
+  
+  getListingDetails: (id: string) => api.get(`/buyer/listings/${id}`),
+  
+  createInquiry: (data: any) => api.post('/buyer/inquiries', data),
+  
+  getInquiries: (params?: {
+    status?: string;
+    skip?: number;
+    limit?: number;
+  }) => api.get('/buyer/inquiries', { params }),
+  
+  updateInquiry: (id: string, data: any) => api.put(`/buyer/inquiries/${id}`, data),
+  
+  cancelInquiry: (id: string) => api.delete(`/buyer/inquiries/${id}`),
+  
+  getAnalytics: () => api.get('/buyer/analytics'),
+};
+
 export default api;

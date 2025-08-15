@@ -91,6 +91,17 @@ async def get_crop_listings(
         async for doc in cursor:
             # Convert ObjectId to string for the response
             doc["id"] = str(doc.pop("_id"))
+            
+            # Ensure all required fields exist with defaults
+            if "price_per_kg" not in doc:
+                doc["price_per_kg"] = doc.get("price_per_unit", 0.0)
+            if "farmer_name" not in doc:
+                doc["farmer_name"] = "Unknown Farmer"
+            if "location" not in doc:
+                doc["location"] = "Unknown Location"
+            if "status" not in doc:
+                doc["status"] = "available"
+                
             listings.append(CropListingResponse(**doc))
         
         return listings
@@ -202,6 +213,17 @@ async def get_marketplace_crops(
         async for doc in cursor:
             # Convert ObjectId to string for the response
             doc["id"] = str(doc.pop("_id"))
+            
+            # Ensure all required fields exist with defaults
+            if "price_per_kg" not in doc:
+                doc["price_per_kg"] = doc.get("price_per_unit", 0.0)
+            if "farmer_name" not in doc:
+                doc["farmer_name"] = "Unknown Farmer"
+            if "location" not in doc:
+                doc["location"] = "Unknown Location"
+            if "status" not in doc:
+                doc["status"] = "available"
+                
             marketplace_crops.append(CropListingResponse(**doc))
         
         return marketplace_crops
@@ -230,6 +252,17 @@ async def get_my_listings(
         my_listings = []
         async for doc in cursor:
             doc["id"] = str(doc.pop("_id"))
+            
+            # Ensure all required fields exist with defaults
+            if "price_per_kg" not in doc:
+                doc["price_per_kg"] = doc.get("price_per_unit", 0.0)
+            if "farmer_name" not in doc:
+                doc["farmer_name"] = "Unknown Farmer"
+            if "location" not in doc:
+                doc["location"] = "Unknown Location"
+            if "status" not in doc:
+                doc["status"] = "available"
+                
             my_listings.append(CropListingResponse(**doc))
         
         return my_listings

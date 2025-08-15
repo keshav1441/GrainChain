@@ -12,6 +12,9 @@ import {FarmerAnalytics} from './pages/farmer/FarmerAnalytics';
 import {FarmerFinance} from './pages/farmer/FarmerFinance';
 import {FarmerProfile} from './pages/farmer/FarmerProfile';
 import {BuyerDashboard} from './pages/buyer/BuyerDashboard';
+import {BuyerFarmers} from './pages/buyer/BuyerFarmers';
+import {BuyerInquiries} from './pages/buyer/BuyerInquiries';
+import {BuyerAnalytics} from './pages/buyer/BuyerAnalytics';
 import {FinancierDashboard} from './pages/financier/FinancierDashboard';
 import {ProfilePage} from './pages/ProfilePage';
 import MarketplacePage from './pages/MarketplacePage';
@@ -169,6 +172,33 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['buyer']}>
                     <BuyerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/buyer/farmers"
+                element={
+                  <ProtectedRoute allowedRoles={['buyer']}>
+                    <BuyerFarmers />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/buyer/inquiries"
+                element={
+                  <ProtectedRoute allowedRoles={['buyer']}>
+                    <BuyerInquiries />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/buyer/analytics"
+                element={
+                  <ProtectedRoute allowedRoles={['buyer']}>
+                    <BuyerAnalytics />
                   </ProtectedRoute>
                 }
               />
