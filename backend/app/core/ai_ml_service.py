@@ -31,7 +31,7 @@ class AIMLService:
     """AI/ML Service for agricultural predictions and recommendations"""
     
     def __init__(self):
-        self.models_dir = Path("app/ml_models")
+        self.models_dir = Path(__file__).parent.parent / "ml_models"
         self.models_dir.mkdir(exist_ok=True)
         self.price_model = None
         self.credit_model = None

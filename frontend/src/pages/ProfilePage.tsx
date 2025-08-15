@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { EditProfileModal } from '../components/profile/EditProfileModal';
+import { VerificationModal } from '../components/profile/VerificationModal';
 import {
   UserCircleIcon,
   MapPinIcon,
@@ -9,10 +11,62 @@ import {
   EnvelopeIcon,
   CalendarIcon,
   ShieldCheckIcon,
+  ExclamationTriangleIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 
 export const ProfilePage: React.FC = () => {
   const { user } = useAuthStore();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<any>(null);
+
+  useEffect(() => {
+    if (user && user.role !== 'buyer') {
+      fetchVerificationStatus();
+    }
+  }, [user]);
+
+  const fetchVerificationStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('Fetching verification status with token:', token ? 'Present' : 'Missing');
+      
+      if (!token) {
+        console.warn('No authentication token available');
+        return;
+      }
+      
+      const response = await fetch('http://localhost:8000/api/v1/users/verification/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      console.log('Verification status response status:', response.status);
+      
+      if (response.ok) {
+        const status = await response.json();
+        console.log('Verification status data:', status);
+        setVerificationStatus(status);
+      } else {
+        const errorText = await response.text();
+        console.error('Verification status error:', response.status, errorText);
+      }
+    } catch (err) {
+      console.error('Error fetching verification status:', err);
+    }
+  };
+
+  const handleProfileUpdate = () => {
+    // Refresh user data
+    fetchVerificationStatus();
+  };
+
+  const handleVerificationSuccess = () => {
+    // Refresh verification status
+    fetchVerificationStatus();
+  };
 
   if (!user) {
     return (
@@ -48,6 +102,118 @@ export const ProfilePage: React.FC = () => {
       default:
         return 'User';
     }
+  };
+
+  const renderVerificationNotice = () => {
+    if (user.role === 'buyer') return null;
+
+    if (!verificationStatus) {
+      return (
+        <div className="mt-8 bg-gray-50 border border-gray-200 rounded-lg p-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <ClockIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-gray-800">
+                Loading Verification Status...
+              </h3>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const { status, message, submitted_at } = verificationStatus;
+
+    const noticeConfig: { [key: string]: any } = {
+      not_submitted: {
+        bgColor: 'bg-blue-50',
+        borderColor: 'border-blue-200',
+        iconColor: 'text-blue-400',
+        titleColor: 'text-blue-800',
+        textColor: 'text-blue-700',
+        icon: ExclamationTriangleIcon,
+        showButton: true,
+      },
+      submitted: {
+        bgColor: 'bg-yellow-50',
+        borderColor: 'border-yellow-200',
+        iconColor: 'text-yellow-400',
+        titleColor: 'text-yellow-800',
+        textColor: 'text-yellow-700',
+        icon: ClockIcon,
+        showButton: false,
+      },
+      under_review: {
+        bgColor: 'bg-yellow-50',
+        borderColor: 'border-yellow-200',
+        iconColor: 'text-yellow-400',
+        titleColor: 'text-yellow-800',
+        textColor: 'text-yellow-700',
+        icon: ClockIcon,
+        showButton: false,
+      },
+      approved: {
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200',
+        iconColor: 'text-green-400',
+        titleColor: 'text-green-800',
+        textColor: 'text-green-700',
+        icon: ShieldCheckIcon,
+        showButton: false,
+      },
+      rejected: {
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        iconColor: 'text-red-400',
+        titleColor: 'text-red-800',
+        textColor: 'text-red-700',
+        icon: ExclamationTriangleIcon,
+        showButton: true,
+      },
+    };
+
+    const config = noticeConfig[status];
+    if (!config) return null;
+
+    const IconComponent = config.icon;
+
+    return (
+      <div className={`mt-8 ${config.bgColor} border ${config.borderColor} rounded-lg p-6`}>
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <IconComponent className={`h-5 w-5 ${config.iconColor}`} />
+          </div>
+          <div className="ml-3">
+            <h3 className={`text-sm font-medium ${config.titleColor} capitalize`}>
+              {status === 'not_submitted' ? 'Verification Required' : 
+               status === 'approved' ? 'Verification Complete' :
+               status.replace(/_/g, ' ')}
+            </h3>
+            <div className={`mt-2 text-sm ${config.textColor}`}>
+              <p>{message}</p>
+              {submitted_at && (
+                <p className="mt-1 text-xs opacity-75">
+                  Submitted: {new Date(submitted_at).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+            {config.showButton && (
+              <div className="mt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setIsVerificationModalOpen(true)}
+                >
+                  {status === 'not_submitted' ? 'Start Verification' : 'Resubmit Documents'}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -101,7 +267,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </div>
               <div className="flex-shrink-0">
-                <Button variant="primary">Edit Profile</Button>
+                <Button variant="primary" onClick={() => setIsEditModalOpen(true)}>Edit Profile</Button>
               </div>
             </div>
           </div>
@@ -225,17 +391,22 @@ export const ProfilePage: React.FC = () => {
               <h2 className="text-lg font-medium text-gray-900">Quick Actions</h2>
             </div>
             <div className="px-6 py-4 space-y-3">
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => setIsEditModalOpen(true)}
+              >
                 <UserCircleIcon className="h-5 w-5 mr-2" />
-                Update Profile Picture
+                Edit Profile
               </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <MapPinIcon className="h-5 w-5 mr-2" />
-                Update Location
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => setIsVerificationModalOpen(true)}
+                disabled={user.role === 'buyer'}
+              >
                 <ShieldCheckIcon className="h-5 w-5 mr-2" />
-                Complete Verification
+                {user.role === 'buyer' ? 'No Verification Required' : 'Manage Verification'}
               </Button>
               <Button variant="outline" className="w-full justify-start">
                 <CalendarIcon className="h-5 w-5 mr-2" />
@@ -245,31 +416,21 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Verification Notice */}
-        {user.verification_status === 'pending' && (
-          <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <ShieldCheckIcon className="h-5 w-5 text-yellow-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
-                  Verification Pending
-                </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>
-                    Your account is currently under review. Complete your profile and upload required documents to speed up the verification process.
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <Button variant="outline" size="sm">
-                    Complete Verification
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Enhanced Verification Notices */}
+        {renderVerificationNotice()}
+        
+        {/* Modals */}
+        <EditProfileModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={handleProfileUpdate}
+        />
+        
+        <VerificationModal
+          isOpen={isVerificationModalOpen}
+          onClose={() => setIsVerificationModalOpen(false)}
+          onSuccess={handleVerificationSuccess}
+        />
       </div>
     </div>
   );

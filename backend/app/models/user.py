@@ -47,14 +47,30 @@ class User(BaseModel):
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
 
+class DocumentVerificationStatus(str, enum.Enum):
+    NOT_SUBMITTED = "not_submitted"
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+class VerificationDocument(BaseModel):
+    file_url: str
+    file_name: str
+    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    status: DocumentVerificationStatus = DocumentVerificationStatus.SUBMITTED
+    rejection_reason: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    reviewed_by: Optional[str] = None
+
 class Farmer(BaseModel):
     id: Optional[str] = Field(default=None, alias="_id")
     user_id: str
     
     # Farm details
     farm_name: Optional[str] = None
-    farm_size_acres: float
-    farming_experience_years: int
+    farm_size_acres: Optional[float] = None
+    farming_experience_years: Optional[int] = None
     primary_crops: Optional[str] = None
     farming_methods: Optional[str] = None
     annual_income: Optional[float] = None
@@ -63,10 +79,21 @@ class Farmer(BaseModel):
     bank_account_number: Optional[str] = None
     ifsc_code: Optional[str] = None
     
-    # Document uploads
-    land_ownership_doc: Optional[str] = None
+    # Verification documents for farmers
+    land_ownership_doc: Optional[VerificationDocument] = None
+    land_photo_with_farmer: Optional[VerificationDocument] = None
+    address_proof: Optional[VerificationDocument] = None
+    aadhar_card: Optional[VerificationDocument] = None
+    pan_card: Optional[VerificationDocument] = None
+    
+    # Old document fields (for backward compatibility)
+    land_ownership_doc_url: Optional[str] = None
     farmer_id_doc: Optional[str] = None
     bank_account_doc: Optional[str] = None
+    
+    # Verification status
+    verification_submitted_at: Optional[datetime] = None
+    verification_completed_at: Optional[datetime] = None
     
     # Platform metrics
     total_sales: float = 0.0
@@ -117,27 +144,36 @@ class Financier(BaseModel):
     user_id: str
     
     # Institution details
-    institution_name: str
-    institution_type: str  # bank, nbfc, cooperative, fintech
+    institution_name: Optional[str] = None
+    institution_type: Optional[str] = None  # bank, nbfc, cooperative, fintech
     license_number: Optional[str] = None
     registration_number: Optional[str] = None
     
     # Contact details
-    contact_person_name: str
-    contact_person_designation: str
-    contact_email: EmailStr
-    contact_phone: str
+    contact_person_name: Optional[str] = None
+    contact_person_designation: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    contact_phone: Optional[str] = None
     
     # Business details
-    years_in_operation: int
+    years_in_operation: Optional[int] = None
     total_assets: Optional[float] = None
     lending_portfolio_size: Optional[float] = None
     interest_rate_range: Optional[str] = None
     
-    # Document uploads
+    # Verification documents for finance partners
+    aadhar_card: Optional[VerificationDocument] = None
+    pan_card: Optional[VerificationDocument] = None
+    company_id_docs: Optional[List[VerificationDocument]] = None
+    
+    # Old document fields (for backward compatibility)
     license_doc: Optional[str] = None
     registration_doc: Optional[str] = None
     financial_statements_doc: Optional[str] = None
+    
+    # Verification status
+    verification_submitted_at: Optional[datetime] = None
+    verification_completed_at: Optional[datetime] = None
     
     # Platform metrics
     total_loans_disbursed: float = 0.0

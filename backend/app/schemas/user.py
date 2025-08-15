@@ -177,8 +177,91 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
-# Complete user profile response
+# Document upload schemas
+class DocumentUploadRequest(BaseModel):
+    file_name: str
+    document_type: str  # 'aadhar', 'pan', 'land_ownership', etc.
+
+class DocumentUploadResponse(BaseModel):
+    file_url: str
+    file_name: str
+    document_type: str
+    uploaded_at: datetime
+    status: str = "submitted"
+
+# Verification submission schemas
+class FarmerVerificationRequest(BaseModel):
+    land_ownership_doc: str
+    land_photo_with_farmer: str
+    address_proof: str
+    aadhar_card: str
+    pan_card: str
+
+class FinancierVerificationRequest(BaseModel):
+    aadhar_card: str
+    pan_card: str
+    company_id_docs: List[str]
+
+class VerificationStatusResponse(BaseModel):
+    status: str  # 'not_submitted', 'submitted', 'under_review', 'approved', 'rejected'
+    submitted_at: Optional[datetime] = None
+    message: str
+
+# Enhanced user update schema
+class ProfileUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    
+    # Farmer specific fields
+    farm_name: Optional[str] = None
+    farm_size_acres: Optional[float] = None
+    farming_experience_years: Optional[int] = None
+    primary_crops: Optional[str] = None
+    farming_methods: Optional[str] = None
+    annual_income: Optional[float] = None
+    bank_account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    
+    # Buyer specific fields
+    company_name: Optional[str] = None
+    company_type: Optional[str] = None
+    gst_number: Optional[str] = None
+    pan_number: Optional[str] = None
+    annual_procurement_volume: Optional[float] = None
+    procurement_categories: Optional[str] = None
+    preferred_regions: Optional[str] = None
+    
+    # Financier specific fields
+    institution_name: Optional[str] = None
+    institution_type: Optional[str] = None
+    license_number: Optional[str] = None
+    registration_number: Optional[str] = None
+    contact_person_name: Optional[str] = None
+    contact_person_designation: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    contact_phone: Optional[str] = None
+    years_in_operation: Optional[int] = None
+    total_assets: Optional[float] = None
+    lending_portfolio_size: Optional[float] = None
+    interest_rate_range: Optional[str] = None
+
+# Updated profile response
 class UserProfileResponse(BaseModel):
+    id: str
+    email: EmailStr
+    full_name: str
+    role: str
+    phone: Optional[str] = None
+    is_verified: bool = False
+    location: Optional[str] = None
+
+# Complete user profile response
+class CompleteUserProfileResponse(BaseModel):
     user: UserResponse
     farmer_profile: Optional[FarmerResponse] = None
     buyer_profile: Optional[BuyerResponse] = None
