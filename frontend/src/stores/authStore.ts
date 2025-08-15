@@ -8,7 +8,6 @@ export interface User {
   full_name: string;
   role: 'farmer' | 'buyer' | 'financier' | 'admin';
   verification_status: 'pending' | 'verified' | 'rejected';
-  pincode: number;
   is_active: boolean;
   profile_image_url?: string;
   created_at: string;
@@ -18,17 +17,25 @@ export interface User {
   address?: string;
 }
 
+// Helper function to decode JWT token
+const decodeToken = (token: string) => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload;
+  } catch (error) {
+    return null;
+  }
+};
+
 interface AuthState {
-  user: User | null;
   token: string | null;
-  isAuthenticated: boolean;
+  user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
-  checkAuth: () => Promise<void>;
-  initializeAuth: () => void;
+  initializeAuth: () => Promise<void>;
+  isAuthenticated: () => boolean;
 }
 
 export interface RegisterData {
@@ -46,9 +53,8 @@ export interface RegisterData {
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
+  token: localStorage.getItem('token'),
   user: null,
-  token: null,
-  isAuthenticated: false,
   isLoading: false,
 
   login: async (email: string, password: string) => {
@@ -56,17 +62,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     try {
       const response = await authApi.login({ email, password });
       const { access_token, user } = response.data;
-
-      // Save to localStorage separately
+      
+      // Store token directly in localStorage
       localStorage.setItem('token', access_token);
-      localStorage.setItem('user', JSON.stringify(user));
-
       authApi.setAuthToken(access_token);
-
+      
       set({
-        user,
         token: access_token,
-        isAuthenticated: true,
+        user,
         isLoading: false,
       });
     } catch (error) {
@@ -80,17 +83,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     try {
       const response = await authApi.register(userData);
       const { access_token, user } = response.data;
-
-      // Save to localStorage separately
+      
+      // Store token directly in localStorage
       localStorage.setItem('token', access_token);
-      localStorage.setItem('user', JSON.stringify(user));
-
       authApi.setAuthToken(access_token);
-
+      
       set({
-        user,
         token: access_token,
-        isAuthenticated: true,
+        user,
         isLoading: false,
       });
     } catch (error) {
@@ -100,62 +100,45 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   logout: () => {
-    authApi.clearAuthToken();
+    // Clear token from localStorage and axios defaults
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
-
+    authApi.clearAuthToken();
+    
     set({
-      user: null,
       token: null,
-      isAuthenticated: false,
+      user: null,
       isLoading: false,
     });
   },
 
-  updateUser: (userData: Partial<User>) => {
-    const currentUser = get().user;
-    if (currentUser) {
-      const updatedUser = { ...currentUser, ...userData };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      set({ user: updatedUser });
-    }
-  },
-
-  checkAuth: async () => {
+  initializeAuth: async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    set({ isLoading: true, token });
     try {
       authApi.setAuthToken(token);
       const response = await authApi.getCurrentUser();
-      const user = response.data.user;
-
-      // Ensure localStorage is synced
-      localStorage.setItem('user', JSON.stringify(user));
-
-      set({
-        user,
-        token,
-        isAuthenticated: true,
+      set({ 
+        user: response.data.user,
+        isLoading: false 
       });
     } catch (error) {
       get().logout();
+      set({ isLoading: false });
     }
   },
 
-  initializeAuth: () => {
-    const token = localStorage.getItem('token');
-    const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
-
-    if (token && user) {
-      authApi.setAuthToken(token);
-      set({ token, user, isAuthenticated: true });
-    } else {
-      set({ isAuthenticated: false });
-    }
+  isAuthenticated: () => {
+    const token = get().token;
+    if (!token) return false;
+    
+    const decoded = decodeToken(token);
+    if (!decoded) return false;
+    
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000);
+    return decoded.exp > now;
   },
 }));
 
-// Initialize immediately
-useAuthStore.getState().initializeAuth();

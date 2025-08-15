@@ -1,6 +1,9 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Settings(BaseSettings):
     # Project Settings
@@ -10,10 +13,8 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # MongoDB Settings
-    MONGODB_URL: str = "mongodb://localhost:27017"
-    MONGODB_DATABASE: str = "grainchain_db"
-    TEST_MONGODB_URL: Optional[str] = None
-    TEST_MONGODB_DATABASE: Optional[str] = None
+    MONGODB_URL: str = os.getenv("MONGODB_URL")
+    MONGODB_DATABASE: str = os.getenv("MONGODB_DATABASE")
     
     # Redis Settings
     REDIS_URL: str = "redis://localhost:6379/0"

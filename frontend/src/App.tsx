@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { useAuthStore } from './stores/authStore';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -45,11 +45,12 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const { user, isAuthenticated, initializeAuth } = useAuthStore();
-  
-  // Initialize authentication state on app load
+
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
+
+  const authenticated = isAuthenticated();
 
   const getDashboardRoute = () => {
     if (!user) return '/';
@@ -78,7 +79,7 @@ export default function App() {
               <Route 
                 path="/" 
                 element={
-                  isAuthenticated ? 
+                  authenticated ? 
                   <Navigate to={getDashboardRoute()} replace /> : 
                   <HomePage />
                 } 
@@ -90,7 +91,7 @@ export default function App() {
               <Route 
                 path="/login" 
                 element={
-                  isAuthenticated ? 
+                  authenticated ? 
                   <Navigate to={getDashboardRoute()} replace /> : 
                   <LoginPage />
                 } 
@@ -98,7 +99,7 @@ export default function App() {
               <Route 
                 path="/register" 
                 element={
-                  isAuthenticated ? 
+                  authenticated ? 
                   <Navigate to={getDashboardRoute()} replace /> : 
                   <RegisterPage />
                 } 
@@ -304,7 +305,7 @@ export default function App() {
               <Route
                 path="/dashboard"
                 element={
-                  isAuthenticated ? 
+                  authenticated ? 
                   <Navigate to={getDashboardRoute()} replace /> : 
                   <Navigate to="/login" replace />
                 }

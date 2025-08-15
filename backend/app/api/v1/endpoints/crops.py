@@ -196,8 +196,7 @@ async def get_crop_listing(
 @router.get("/marketplace", response_model=List[CropListingResponse])
 async def get_marketplace_crops(
     limit: int = 20,
-    db: AsyncIOMotorDatabase = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Get crops available in marketplace"""
     try:

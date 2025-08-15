@@ -11,7 +11,7 @@ from app.models.user import User, Farmer, Buyer, Financier
 from app.schemas.user import (
     UserCreate, UserResponse, Token, LoginRequest, 
     FarmerCreate, BuyerCreate, FinancierCreate,
-    UserProfileResponse
+    CompleteUserProfileResponse
 )
 from app.api.deps import get_current_active_user
 
@@ -70,7 +70,7 @@ async def register_user(
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": str(result.inserted_id), "role": user_data.role.value},
+        data={"sub": str(result.inserted_id)},
         expires_delta=access_token_expires
     )
     
@@ -116,7 +116,7 @@ async def login_user(
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": str(user_doc["_id"]), "role": user_doc["role"]},
+        data={"sub": str(user_doc["_id"])},
         expires_delta=access_token_expires
     )
     
@@ -126,7 +126,7 @@ async def login_user(
         "user": UserResponse.model_validate(user)
     }
 
-@router.get("/me", response_model=UserProfileResponse)
+@router.get("/me", response_model=CompleteUserProfileResponse)
 async def get_current_user_profile(
     current_user: User = Depends(get_current_active_user)
 ):
@@ -137,13 +137,25 @@ async def get_current_user_profile(
     financier_profile = None
     
     if current_user.role.value == "farmer":
-        farmer_profile = await Farmer.find_one({"user_id": current_user.id})
+        farmers_collection = get_collection("farmers")
+        farmer_doc = await farmers_collection.find_one({"user_id": current_user.id})
+        if farmer_doc:
+            farmer_doc["_id"] = str(farmer_doc["_id"])
+            farmer_profile = Farmer(**farmer_doc)
     elif current_user.role.value == "buyer":
-        buyer_profile = await Buyer.find_one({"user_id": current_user.id})
+        buyers_collection = get_collection("buyers")
+        buyer_doc = await buyers_collection.find_one({"user_id": current_user.id})
+        if buyer_doc:
+            buyer_doc["_id"] = str(buyer_doc["_id"])
+            buyer_profile = Buyer(**buyer_doc)
     elif current_user.role.value == "financier":
-        financier_profile = await Financier.find_one({"user_id": current_user.id})
+        financiers_collection = get_collection("financiers")
+        financier_doc = await financiers_collection.find_one({"user_id": current_user.id})
+        if financier_doc:
+            financier_doc["_id"] = str(financier_doc["_id"])
+            financier_profile = Financier(**financier_doc)
     
-    return UserProfileResponse(
+    return CompleteUserProfileResponse(
         user=UserResponse.model_validate(current_user),
         farmer_profile=farmer_profile,
         buyer_profile=buyer_profile,

@@ -83,7 +83,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         address: user.address || '',
         city: user.city || '',
         state: user.state || '',
-        pincode: user.pincode || 0,
+        pincode: (user as any).pincode || 0,
         profile_image_url: user.profile_image_url || '',
         // Initialize role-specific fields based on user role
         ...(user.role === 'farmer' && {
@@ -126,7 +126,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const handleInputChange = (field: keyof ProfileFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
-  const updateUser = useAuthStore.getState().updateUser; 
+  // Remove updateUser since it's not available in the new auth store 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -160,7 +160,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         profile_image_url: profileImageUrl,
       };
 
-      const token = JSON.parse(localStorage.getItem('token')) || '';
+      const token = localStorage.getItem('token') || '';
 
       const response = await fetch('http://localhost:8000/api/v1/users/profile/update', {
         method: 'PUT',
@@ -177,8 +177,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         return;
       }
 
-      const updatedUser = await response.json();
-      updateUser(updatedUser);
+      // Profile updated successfully - user data will be refreshed on next auth check
 
       console.log('Profile updated successfully');
 

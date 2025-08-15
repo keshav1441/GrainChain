@@ -22,7 +22,6 @@ from app.schemas.user import (
     FinancierVerificationRequest,
     VerificationStatusResponse
 )
-from sqlalchemy.orm import Session
 from bson import ObjectId
 from app.models.user import User, Farmer, Buyer, Financier
 from app.core.database import get_db
@@ -238,7 +237,7 @@ async def get_financiers(
 @router.put("/profile/update", response_model=UserProfileResponse)
 async def update_profile(
     request: ProfileUpdateRequest,
-    current_user: dict = Depends(get_current_user),  # Ensure this returns a dict or Pydantic model, not SQLAlchemy object
+    current_user: User = Depends(get_current_user),
     db=Depends(get_db)  # This should be an AsyncIOMotorDatabase
 ):
     """Update user profile with role-specific information"""
@@ -251,13 +250,13 @@ async def update_profile(
 
         if user_updates:
             result = await db["users"].update_one(
-                {"_id": ObjectId(current_user["_id"])},
+                {"_id": ObjectId(current_user.id)},
                 {"$set": user_updates}
             )
             print(result.matched_count, result.modified_count)
 
         # 2. Update role-specific profile
-        role = current_user.get("role")
+        role = current_user.role.value
 
         if role == "farmer":
             farmer_updates = {field: updated_fields[field] for field in [
@@ -267,7 +266,7 @@ async def update_profile(
             ] if field in updated_fields}
             if farmer_updates:
                 await db["farmers"].update_one(
-                    {"user_id": current_user["_id"]},
+                    {"user_id": current_user.id},
                     {"$set": farmer_updates}
                 )
 
@@ -278,7 +277,7 @@ async def update_profile(
             ] if field in updated_fields}
             if buyer_updates:
                 await db["buyers"].update_one(
-                    {"user_id": current_user["_id"]},
+                    {"user_id": current_user.id},
                     {"$set": buyer_updates}
                 )
 
@@ -290,21 +289,20 @@ async def update_profile(
             ] if field in updated_fields}
             if financier_updates:
                 await db["financiers"].update_one(
-                    {"user_id": current_user["_id"]},
+                    {"user_id": current_user.id},
                     {"$set": financier_updates}
                 )
 
-        logger.info(f"Profile updated successfully for user {current_user['_id']}")
+        logger.info(f"Profile updated successfully for user {current_user.id}")
 
         return UserProfileResponse(
-            id=str(current_user["_id"]),
-            email=current_user["email"],
-            full_name=updated_fields.get("full_name", current_user.get("full_name")),
+            id=current_user.id,
+            email=current_user.email,
+            full_name=updated_fields.get("full_name", current_user.full_name),
             role=role,
-            phone=updated_fields.get("phone", current_user.get("phone")),
-            is_verified=current_user.get("is_verified", False),
-            location=f"{updated_fields.get('city', current_user.get('city', ''))}, "
-                     f"{updated_fields.get('state', current_user.get('state', ''))}".strip(", ")
+            phone=updated_fields.get("phone", current_user.phone),
+            is_verified=getattr(current_user, 'is_verified', False),
+            location=f"{updated_fields.get('city', getattr(current_user, 'city', ''))}, {updated_fields.get('state', getattr(current_user, 'state', ''))}".strip(", ")
         )
 
     except Exception as e:

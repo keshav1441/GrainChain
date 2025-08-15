@@ -58,7 +58,9 @@ export const ProfilePage: React.FC = () => {
   };
 
   const handleProfileUpdate = () => {
-    // Refresh user data
+    // Refresh user data and verification status
+    const { initializeAuth } = useAuthStore.getState();
+    initializeAuth(); // This will fetch fresh user data from /api/v1/auth/me
     fetchVerificationStatus();
   };
 

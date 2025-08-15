@@ -7,19 +7,31 @@ client: AsyncIOMotorClient = None
 database: AsyncIOMotorDatabase = None
 
 async def connect_to_mongo():
-    """Create database connection"""
+    """Connect to MongoDB database."""
     global client, database
-    client = AsyncIOMotorClient(settings.MONGODB_URL)
-    database = client[settings.MONGODB_DATABASE]
-    
-    # Test the connection
     try:
+        # Add connection timeout and retry settings for better error handling
+        client = AsyncIOMotorClient(
+            settings.MONGODB_URL,
+            serverSelectionTimeoutMS=5000,  # 5 second timeout
+            connectTimeoutMS=5000,
+            socketTimeoutMS=5000,
+            maxPoolSize=10,
+            retryWrites=True
+        )
+        database = client[settings.MONGODB_DATABASE]
+        
+        # Test the connection
         await client.admin.command('ping')
-        print(f"Successfully connected to MongoDB: {settings.MONGODB_DATABASE}")
-        logging.info("Connected to MongoDB")
+        print(f"✅ Connected to MongoDB: {settings.MONGODB_DATABASE}")
+        
     except Exception as e:
-        print(f"Failed to connect to MongoDB: {e}")
-        raise
+        print(f"❌ Failed to connect to MongoDB: {e}")
+        print("💡 Solutions:")
+        print("   1. Install and start local MongoDB: https://www.mongodb.com/try/download/community")
+        print("   2. Use MongoDB Atlas (cloud): https://www.mongodb.com/atlas")
+        print("   3. Update MONGODB_URL in .env file with your connection string")
+        raise e
 
 async def close_mongo_connection():
     """Close database connection"""

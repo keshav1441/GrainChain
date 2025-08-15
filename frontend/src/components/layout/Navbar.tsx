@@ -10,13 +10,14 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { useAuthStore } from '../../stores/authStore';
-import { Button } from '../ui/Button';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuthStore();
   const navigate = useNavigate();
+  
+  const authenticated = isAuthenticated();
 
   const handleLogout = () => {
     logout();
@@ -80,7 +81,7 @@ export const Navbar: React.FC = () => {
             >
               Finance
             </Link>
-            {isAuthenticated ? (
+            {authenticated ? (
               <>
                 <Link
                   to={getDashboardLink()}
@@ -175,9 +176,12 @@ export const Navbar: React.FC = () => {
                 >
                   Sign in
                 </Link>
-                <Button as={Link} to="/register" variant="primary" size="sm">
+                <Link
+                  to="/register"
+                  className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                >
                   Get Started
-                </Button>
+                </Link>
               </div>
             )}
           </div>
@@ -224,7 +228,7 @@ export const Navbar: React.FC = () => {
             >
               Finance
             </Link>
-            {isAuthenticated ? (
+            {authenticated ? (
               <>
                 <Link
                   to={getDashboardLink()}

@@ -53,7 +53,9 @@ async def get_current_user(
             detail="Inactive user"
         )
     
-    return user_doc  # return as dict, not Pydantic model
+    # Convert dict to User model for proper attribute access
+    from app.models.user import User
+    return User(**user_doc)
 
 
 async def get_current_active_user(

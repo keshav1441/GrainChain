@@ -9,32 +9,12 @@ const api = axios.create({
   },
 });
 
-// Immediately try to set the token on module load to prevent race conditions
-const storedAuth = localStorage.getItem('grainchain-auth');
-if (storedAuth) {
-  try {
-    const { state } = JSON.parse(storedAuth);
-    if (state?.token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
-    }
-  } catch (error) {
-    console.error('Failed to parse stored auth data on init:', error);
-  }
-}
-
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('grainchain-auth');
+    const token = localStorage.getItem('token');
     if (token) {
-      try {
-        const authData = JSON.parse(token);
-        if (authData.state?.token) {
-          config.headers.Authorization = `Bearer ${authData.state.token}`;
-        }
-      } catch (error) {
-        console.error('Error parsing auth token:', error);
-      }
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -49,7 +29,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid
-      localStorage.removeItem('grainchain-auth');
+      localStorage.removeItem('token');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -202,8 +182,6 @@ export const uploadApi = {
     });
   },
 };
-
-
 
 // Buyer API endpoints
 export const buyerApi = {
