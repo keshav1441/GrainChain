@@ -268,6 +268,10 @@ export const financierApi = {
   
   getAIInsights: () => 
     api.get('/finance/financier/analytics/insights'),
+  
+  // Create financial product
+  createFinancialProduct: (data: any) => 
+    api.post('/finance/financier/financial-products', data),
 };
 
 export default api;

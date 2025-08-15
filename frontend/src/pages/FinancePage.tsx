@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
-  CurrencyRupeeIcon,
-  BanknotesIcon,
   CreditCardIcon,
-  ShieldCheckIcon,
+  CalculatorIcon,
+  BanknotesIcon,
+  UserGroupIcon,
   ClockIcon,
+  CheckCircleIcon,
   DocumentCheckIcon,
+  LockClosedIcon,
+  HandThumbUpIcon,
+  CurrencyRupeeIcon,
   PhoneIcon,
   ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
-  ArrowTrendingUpIcon,
-  CalculatorIcon,
-  UserGroupIcon,
-  LockClosedIcon,
-  HandThumbUpIcon
 } from '@heroicons/react/24/outline';
 
 interface LoanProduct {
@@ -49,95 +47,9 @@ const FinancePage: React.FC = () => {
     setIsVisible(true);
   }, []);
 
-  const loanProducts: LoanProduct[] = [
-    {
-      id: '1',
-      name: 'Crop Loan',
-      description: 'Short-term financing for crop cultivation and farming activities',
-      interestRate: 7.5,
-      maxAmount: 500000,
-      tenure: '6-12 months',
-      processingTime: '24-48 hours',
-      eligibility: ['Valid land documents', 'Crop insurance', 'Minimum 2 years farming experience'],
-      features: ['No collateral up to ₹1L', 'Flexible repayment', 'Quick approval', 'Digital process'],
-      icon: '🌾',
-      popular: true
-    },
-    {
-      id: '2',
-      name: 'Equipment Loan',
-      description: 'Finance for purchasing agricultural machinery and equipment',
-      interestRate: 9.2,
-      maxAmount: 2000000,
-      tenure: '2-7 years',
-      processingTime: '3-5 days',
-      eligibility: ['Equipment quotation', 'Income proof', 'Land ownership proof'],
-      features: ['Up to 85% financing', 'Extended tenure', 'Equipment insurance', 'EMI moratorium'],
-      icon: '🚜',
-      popular: false
-    },
-    {
-      id: '3',
-      name: 'Working Capital',
-      description: 'Meet day-to-day operational expenses and cash flow requirements',
-      interestRate: 8.8,
-      maxAmount: 1000000,
-      tenure: '12-36 months',
-      processingTime: '2-3 days',
-      eligibility: ['Business registration', 'Bank statements', 'GST registration'],
-      features: ['Revolving credit', 'Interest on utilization', 'Online access', 'Quick disbursement'],
-      icon: '💼',
-      popular: true
-    },
-    {
-      id: '4',
-      name: 'Storage Loan',
-      description: 'Finance for building warehouses and storage facilities',
-      interestRate: 8.5,
-      maxAmount: 5000000,
-      tenure: '5-15 years',
-      processingTime: '7-10 days',
-      eligibility: ['Project report', 'Land documents', 'Construction permits'],
-      features: ['Long tenure', 'Competitive rates', 'Construction monitoring', 'Subsidy linkage'],
-      icon: '🏗️',
-      popular: false
-    }
-  ];
+  const loanProducts: LoanProduct[] = [];
 
-  const financialServices: FinancialService[] = [
-    {
-      id: '1',
-      title: 'Insurance Services',
-      description: 'Comprehensive crop and livestock insurance coverage',
-      icon: ShieldCheckIcon,
-      features: ['Crop insurance', 'Weather insurance', 'Livestock coverage', 'Equipment protection'],
-      cta: 'Get Quote'
-    },
-    {
-      id: '2',
-      title: 'Investment Advisory',
-      description: 'Expert guidance for agricultural investments and planning',
-      icon: ArrowTrendingUpIcon,
-      features: ['Portfolio management', 'Risk assessment', 'Market analysis', 'Growth planning'],
-      cta: 'Consult Now'
-    },
-    {
-      id: '3',
-      title: 'Digital Payments',
-      description: 'Secure and instant payment solutions for transactions',
-      icon: CreditCardIcon,
-      features: ['UPI payments', 'Digital wallet', 'QR code payments', 'Transaction history'],
-      cta: 'Setup Account'
-    },
-    {
-      id: '4',
-      title: 'Financial Planning',
-      description: 'Personalized financial planning for agricultural businesses',
-      icon: CalculatorIcon,
-      features: ['Budget planning', 'Cash flow analysis', 'Tax optimization', 'Retirement planning'],
-      cta: 'Plan Now'
-    }
-  ];
+  const financialServices: FinancialService[] = [];
 
   const calculateEMI = (principal: number, rate: number, tenure: number) => {
     const monthlyRate = rate / 12 / 100;

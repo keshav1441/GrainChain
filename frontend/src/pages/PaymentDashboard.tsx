@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  CreditCardIcon, 
-  BanknotesIcon, 
+import {
+  CreditCardIcon,
+  ChartBarIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  PlusIcon,
   DocumentTextIcon,
-  ChartBarIcon
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import PaymentModal from '../components/payments/PaymentModal';
 import TransactionHistory from '../components/payments/TransactionHistory';
@@ -40,8 +39,8 @@ const PaymentDashboard: React.FC = () => {
     monthlyExpenses: 0
   });
   const [quickPayments, setQuickPayments] = useState<QuickPayment[]>([]);
-  const [userRole, setUserRole] = useState('farmer'); // Would come from auth context
-  const [userId, setUserId] = useState('user_123'); // Would come from auth context
+  const [userRole] = useState('farmer'); // Would come from auth context
+  const [userId] = useState('user_123'); // Would come from auth context
 
   useEffect(() => {
     fetchPaymentStats();
@@ -50,16 +49,15 @@ const PaymentDashboard: React.FC = () => {
 
   const fetchPaymentStats = async () => {
     try {
-      // Mock data - would be replaced with actual API call
-      const mockStats: PaymentStats = {
-        totalIncome: 125000,
-        totalExpenses: 45000,
-        pendingPayments: 3,
-        completedTransactions: 28,
-        monthlyIncome: 35000,
-        monthlyExpenses: 12000
-      };
-      setStats(mockStats);
+      // Remove mock data - implement API call
+      setStats({
+        totalIncome: 0,
+        totalExpenses: 0,
+        pendingPayments: 0,
+        completedTransactions: 0,
+        monthlyIncome: 0,
+        monthlyExpenses: 0
+      });
     } catch (error) {
       console.error('Error fetching payment stats:', error);
     }
@@ -70,65 +68,8 @@ const PaymentDashboard: React.FC = () => {
       // Mock quick payment options based on user role
       let mockQuickPayments: QuickPayment[] = [];
 
-      if (userRole === 'farmer') {
-        mockQuickPayments = [
-          {
-            id: '1',
-            recipient: 'AgriCorp Ltd',
-            amount: 25000,
-            description: 'Payment for 500kg wheat delivery',
-            paymentType: 'transaction'
-          },
-          {
-            id: '2',
-            recipient: 'Rural Finance Co',
-            amount: 1500,
-            description: 'Loan processing fee',
-            paymentType: 'loan_processing'
-          },
-          {
-            id: '3',
-            recipient: 'GrainChain Platform',
-            amount: 750,
-            description: 'Platform commission (3%)',
-            paymentType: 'commission'
-          }
-        ];
-      } else if (userRole === 'buyer') {
-        mockQuickPayments = [
-          {
-            id: '1',
-            recipient: 'Rajesh Kumar (Farmer)',
-            amount: 30000,
-            description: 'Payment for 600kg rice',
-            paymentType: 'transaction'
-          },
-          {
-            id: '2',
-            recipient: 'Priya Sharma (Farmer)',
-            amount: 18000,
-            description: 'Payment for 400kg wheat',
-            paymentType: 'transaction'
-          }
-        ];
-      } else if (userRole === 'financier') {
-        mockQuickPayments = [
-          {
-            id: '1',
-            recipient: 'Farmer Loan Disbursement',
-            amount: 100000,
-            description: 'Crop loan disbursement - LOAN_20241210_ABC123',
-            paymentType: 'loan_disbursement'
-          },
-          {
-            id: '2',
-            recipient: 'Equipment Loan Disbursement',
-            amount: 250000,
-            description: 'Equipment loan disbursement - LOAN_20241209_XYZ456',
-            paymentType: 'loan_disbursement'
-          }
-        ];
-      }
+      // Remove mock data - use API calls instead
+      mockQuickPayments = [];
 
       setQuickPayments(mockQuickPayments);
     } catch (error) {

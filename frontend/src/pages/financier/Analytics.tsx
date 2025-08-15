@@ -13,35 +13,35 @@ import {
 import { financierApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
-interface AnalyticsData {
-  totalLoansValue: number;
-  totalApplications: number;
-  approvalRate: number;
-  defaultRate: number;
-  monthlyTrends: {
-    month: string;
-    applications: number;
-    disbursements: number;
-    value: number;
-  }[];
-  loanTypeDistribution: {
-    type: string;
-    count: number;
-    value: number;
-  }[];
-  riskAnalysis: {
-    lowRisk: number;
-    mediumRisk: number;
-    highRisk: number;
-  };
-}
+// interface AnalyticsData {
+//   totalLoansValue: number;
+//   totalApplications: number;
+//   approvalRate: number;
+//   defaultRate: number;
+//   monthlyTrends: {
+//     month: string;
+//     applications: number;
+//     disbursements: number;
+//     value: number;
+//   }[];
+//   loanTypeDistribution: {
+//     type: string;
+//     count: number;
+//     value: number;
+//   }[];
+//   riskAnalysis: {
+//     lowRisk: number;
+//     mediumRisk: number;
+//     highRisk: number;
+//   };
+// }
 
 export const Analytics: React.FC = () => {
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('3months');
-  const [aiInsights, setAiInsights] = useState<any>(null);
-  const [insightsLoading, setInsightsLoading] = useState(false);
+  // const [aiInsights, setAiInsights] = useState(null);
+  // const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     const fetchAnalyticsData = async () => {
@@ -203,7 +203,7 @@ export const Analytics: React.FC = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Trends</h3>
             <div className="space-y-4">
-              {analytics?.monthlyTrends.map((trend, index) => (
+              {analytics?.monthlyTrends.map((trend: any, index: number) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
@@ -230,7 +230,7 @@ export const Analytics: React.FC = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Loan Type Distribution</h3>
             <div className="space-y-4">
-              {analytics?.loanTypeDistribution.map((type, index) => (
+              {analytics?.loanTypeDistribution.map((type: any, index: number) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">

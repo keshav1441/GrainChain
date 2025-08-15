@@ -5,7 +5,6 @@ import {
   ClockIcon, 
   CheckCircleIcon, 
   XCircleIcon,
-  FunnelIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 
@@ -30,7 +29,7 @@ interface TransactionHistoryProps {
   userRole: string;
 }
 
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ userId, userRole }) => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({ userId }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -44,78 +43,8 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ userId, userRol
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      // Mock data for now - would be replaced with actual API call
-      const mockTransactions: Transaction[] = [
-        {
-          id: '1',
-          payment_id: 'PAY_20241210_ABC123',
-          amount: 25000,
-          currency: 'INR',
-          payment_type: 'transaction',
-          status: 'completed',
-          payer_user_id: 'buyer_001',
-          payee_user_id: userId,
-          description: 'Payment for 500kg wheat',
-          initiated_at: '2024-12-10T10:30:00Z',
-          completed_at: '2024-12-10T10:32:15Z',
-          gateway_provider: 'razorpay'
-        },
-        {
-          id: '2',
-          payment_id: 'PAY_20241209_XYZ456',
-          amount: 1000,
-          currency: 'INR',
-          payment_type: 'loan_processing',
-          status: 'completed',
-          payer_user_id: userId,
-          payee_user_id: 'financier_001',
-          description: 'Loan processing fee',
-          initiated_at: '2024-12-09T14:15:00Z',
-          completed_at: '2024-12-09T14:16:30Z',
-          gateway_provider: 'razorpay'
-        },
-        {
-          id: '3',
-          payment_id: 'PAY_20241208_DEF789',
-          amount: 750,
-          currency: 'INR',
-          payment_type: 'commission',
-          status: 'processing',
-          payer_user_id: 'buyer_002',
-          payee_user_id: 'platform',
-          description: 'Platform commission (3%)',
-          initiated_at: '2024-12-08T16:45:00Z'
-        },
-        {
-          id: '4',
-          payment_id: 'PAY_20241207_GHI012',
-          amount: 50000,
-          currency: 'INR',
-          payment_type: 'loan_disbursement',
-          status: 'completed',
-          payer_user_id: 'financier_001',
-          payee_user_id: userId,
-          description: 'Crop loan disbursement',
-          initiated_at: '2024-12-07T09:00:00Z',
-          completed_at: '2024-12-07T09:05:00Z',
-          gateway_provider: 'razorpay'
-        },
-        {
-          id: '5',
-          payment_id: 'PAY_20241206_JKL345',
-          amount: 15000,
-          currency: 'INR',
-          payment_type: 'transaction',
-          status: 'failed',
-          payer_user_id: userId,
-          payee_user_id: 'buyer_003',
-          description: 'Payment for equipment rental',
-          initiated_at: '2024-12-06T11:20:00Z',
-          failed_at: '2024-12-06T11:22:00Z'
-        }
-      ];
-
-      setTransactions(mockTransactions);
+      // Remove mock data - implement API call
+      setTransactions([]);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {

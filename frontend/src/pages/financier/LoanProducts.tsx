@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import {
+  ArrowLeftIcon,
+  CheckCircleIcon,
   CurrencyDollarIcon,
   PlusIcon,
   PencilIcon,
-  ArrowLeftIcon,
-  CheckCircleIcon,
   ClockIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { Button } from '../../components/ui/Button';
 import { financierApi } from '../../services/api';
-import { toast } from 'react-hot-toast';
+import { Button } from '../../components/ui/Button';
 
 interface LoanProduct {
   id: string;
@@ -24,26 +24,17 @@ interface LoanProduct {
   interest_rate_max: number;
   tenure_min_months: number;
   tenure_max_months: number;
-  processing_fee_percent: number;
   eligibility_criteria: string[];
-  required_documents: string[];
-  is_active: boolean;
+  processing_fee_percent: number;
+  status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
 }
 
-interface ProductStats {
-  totalProducts: number;
-  activeProducts: number;
-  averageInterestRate: number;
-  averageTenure: number;
-}
 
 export const LoanProducts: React.FC = () => {
   const [products, setProducts] = useState<LoanProduct[]>([]);
-  const [stats, setStats] = useState<ProductStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<LoanProduct | null>(null);
 
@@ -51,10 +42,8 @@ export const LoanProducts: React.FC = () => {
     const fetchProductsData = async () => {
       try {
         setLoading(true);
-        const statusParam = statusFilter === 'all' ? undefined : statusFilter;
-        const response = await financierApi.getLoanProductsManagement(statusParam);
-        setProducts(response.data.products);
-        setStats(response.data.stats);
+        const response = await financierApi.getLoanProductsManagement();
+        setProducts(response.data.products || []);
       } catch (error) {
         console.error('Error fetching loan products:', error);
         toast.error('Failed to load loan products');
@@ -64,145 +53,15 @@ export const LoanProducts: React.FC = () => {
     };
 
     fetchProductsData();
-  }, [statusFilter]);
+  }, []);
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      // Mock loan products data - in real implementation, this would come from API
-      const mockProducts: LoanProduct[] = [
-        {
-          id: '1',
-          name: 'Crop Loan - Basic',
-          description: 'Short-term financing for crop cultivation and seasonal agricultural activities',
-          loan_type: 'Crop Loan',
-          min_amount: 50000,
-          max_amount: 1000000,
-          interest_rate_min: 8.5,
-          interest_rate_max: 12.0,
-          tenure_min_months: 6,
-          tenure_max_months: 12,
-          processing_fee_percent: 1.0,
-          eligibility_criteria: [
-            'Minimum 2 acres of agricultural land',
-            'Credit score above 650',
-            'Valid land ownership documents',
-            'Previous farming experience'
-          ],
-          required_documents: [
-            'Land ownership documents',
-            'Aadhaar card',
-            'PAN card',
-            'Bank statements (6 months)',
-            'Income proof'
-          ],
-          is_active: true,
-          created_at: '2024-01-15T00:00:00Z',
-          updated_at: '2024-03-10T00:00:00Z'
-        },
-        {
-          id: '2',
-          name: 'Equipment Loan - Premium',
-          description: 'Long-term financing for purchasing agricultural equipment and machinery',
-          loan_type: 'Equipment Loan',
-          min_amount: 200000,
-          max_amount: 5000000,
-          interest_rate_min: 9.0,
-          interest_rate_max: 14.0,
-          tenure_min_months: 12,
-          tenure_max_months: 60,
-          processing_fee_percent: 1.5,
-          eligibility_criteria: [
-            'Minimum 5 acres of agricultural land',
-            'Credit score above 700',
-            'Stable income for 2+ years',
-            'Collateral security'
-          ],
-          required_documents: [
-            'Equipment quotation',
-            'Land documents',
-            'Income tax returns (2 years)',
-            'Bank statements (12 months)',
-            'Collateral documents'
-          ],
-          is_active: true,
-          created_at: '2024-02-01T00:00:00Z',
-          updated_at: '2024-03-15T00:00:00Z'
-        },
-        {
-          id: '3',
-          name: 'Working Capital Loan',
-          description: 'Flexible financing for day-to-day agricultural operations and expenses',
-          loan_type: 'Working Capital',
-          min_amount: 25000,
-          max_amount: 500000,
-          interest_rate_min: 10.0,
-          interest_rate_max: 15.0,
-          tenure_min_months: 3,
-          tenure_max_months: 24,
-          processing_fee_percent: 0.5,
-          eligibility_criteria: [
-            'Active farming business',
-            'Credit score above 600',
-            'Regular income source',
-            'Valid business registration'
-          ],
-          required_documents: [
-            'Business registration',
-            'Financial statements',
-            'Bank statements (6 months)',
-            'GST returns',
-            'Identity proof'
-          ],
-          is_active: true,
-          created_at: '2024-01-20T00:00:00Z',
-          updated_at: '2024-02-28T00:00:00Z'
-        },
-        {
-          id: '4',
-          name: 'Organic Farming Loan',
-          description: 'Specialized loan for organic farming practices and certification',
-          loan_type: 'Specialty Loan',
-          min_amount: 100000,
-          max_amount: 2000000,
-          interest_rate_min: 7.5,
-          interest_rate_max: 11.0,
-          tenure_min_months: 12,
-          tenure_max_months: 36,
-          processing_fee_percent: 0.75,
-          eligibility_criteria: [
-            'Organic farming certification or in process',
-            'Minimum 3 acres of land',
-            'Credit score above 680',
-            'Training in organic practices'
-          ],
-          required_documents: [
-            'Organic certification',
-            'Land documents',
-            'Training certificates',
-            'Soil test reports',
-            'Market linkage proof'
-          ],
-          is_active: false,
-          created_at: '2024-03-01T00:00:00Z',
-          updated_at: '2024-03-20T00:00:00Z'
-        }
-      ];
-      setProducts(mockProducts);
-    } catch (error) {
-      console.error('Error loading loan products:', error);
-      toast.error('Failed to load loan products');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const toggleProductStatus = async (productId: string) => {
     try {
       // In real implementation, this would call an API
       setProducts(prev => prev.map(product => 
         product.id === productId 
-          ? { ...product, is_active: !product.is_active }
+          ? { ...product, status: product.status === 'active' ? 'inactive' : 'active' }
           : product
       ));
       toast.success('Product status updated successfully');
@@ -251,14 +110,15 @@ export const LoanProducts: React.FC = () => {
                 Manage your loan products and their terms
               </p>
             </div>
-            <Button
-              variant="primary"
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center"
-            >
-              <PlusIcon className="h-5 w-5 mr-2" />
-              Create Product
-            </Button>
+            <Link to="/financier/products/create">
+              <Button
+                variant="primary"
+                className="flex items-center"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Create Product
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -283,7 +143,7 @@ export const LoanProducts: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Active Products</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {products.filter(p => p.is_active).length}
+                  {products.filter(p => p.status === 'active').length}
                 </p>
               </div>
             </div>
@@ -348,12 +208,12 @@ export const LoanProducts: React.FC = () => {
                         <h3 className="text-lg font-semibold text-gray-900">{product.name}</h3>
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            product.is_active
+                            product.status === 'active'
                               ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
                           }`}
                         >
-                          {product.is_active ? 'Active' : 'Inactive'}
+                          {product.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 mb-2">{product.description}</p>
@@ -421,12 +281,12 @@ export const LoanProducts: React.FC = () => {
                       Edit
                     </Button>
                     <Button
-                      variant={product.is_active ? "danger" : "primary"}
+                      variant={product.status === 'active' ? "danger" : "primary"}
                       size="sm"
                       onClick={() => toggleProductStatus(product.id)}
                       className="flex-1"
                     >
-                      {product.is_active ? (
+                      {product.status === 'active' ? (
                         <>
                           <XMarkIcon className="h-4 w-4 mr-1" />
                           Deactivate

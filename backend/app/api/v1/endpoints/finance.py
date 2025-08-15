@@ -853,54 +853,81 @@ async def get_loan_products(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
-@router.post("/financier/loan-products")
-async def create_loan_product(
-    product_data: dict,
-    current_user: dict = Depends(get_current_user)
+class FinancialProductRequest(BaseModel):
+    product_name: str
+    product_type: str
+    description: Optional[str] = None
+    min_amount: float
+    max_amount: float
+    min_tenure_months: int
+    max_tenure_months: int
+    interest_rate_min: float
+    interest_rate_max: float
+    processing_fee_percentage: float = 0.0
+    min_farm_size: Optional[float] = None
+    min_experience_years: Optional[int] = None
+    min_annual_income: Optional[float] = None
+    eligible_states: Optional[List[str]] = None
+    eligible_crops: Optional[List[str]] = None
+    min_credit_score: Optional[int] = None
+    is_active: bool = True
+    is_featured: bool = False
+
+@router.post("/financier/financial-products", response_model=dict)
+async def create_financial_product(
+    product_data: FinancialProductRequest,
+    current_user: User = Depends(get_current_user)
 ):
-    """Create a new loan product"""
+    """Create a new financial product"""
     try:
         # Check if user is a financier
-        if current_user.get("role") != "financier":
+        if current_user.role != "financier":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         
-        query = """
-            INSERT INTO loan_products (name, description, interest_rate, min_amount, max_amount, 
-                                     tenure_months, eligibility_criteria, status, created_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING *
-        """
+        # Get the financial products collection
+        products_collection = get_collection("financial_products")
         
-        product = await database.fetch_one(
-            query,
-            product_data["name"],
-            product_data["description"],
-            product_data["interestRate"],
-            product_data["minAmount"],
-            product_data["maxAmount"],
-            product_data["tenure"],
-            product_data.get("eligibilityCriteria", []),
-            "active",
-            current_user["id"]
-        )
+        # Create the product document
+        product_doc = {
+            "financier_id": current_user.id,
+            "product_name": product_data.product_name,
+            "product_type": product_data.product_type,
+            "description": product_data.description,
+            "min_amount": product_data.min_amount,
+            "max_amount": product_data.max_amount,
+            "min_tenure_months": product_data.min_tenure_months,
+            "max_tenure_months": product_data.max_tenure_months,
+            "interest_rate_min": product_data.interest_rate_min,
+            "interest_rate_max": product_data.interest_rate_max,
+            "processing_fee_percentage": product_data.processing_fee_percentage,
+            "min_farm_size": product_data.min_farm_size,
+            "min_experience_years": product_data.min_experience_years,
+            "min_annual_income": product_data.min_annual_income,
+            "eligible_states": product_data.eligible_states or [],
+            "eligible_crops": product_data.eligible_crops or [],
+            "min_credit_score": product_data.min_credit_score,
+            "is_active": product_data.is_active,
+            "is_featured": product_data.is_featured,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        # Insert the product
+        result = await products_collection.insert_one(product_doc)
+        
+        # Return the created product with ID
+        product_doc["_id"] = str(result.inserted_id)
+        product_doc["id"] = str(result.inserted_id)
         
         return {
-            "id": product["id"],
-            "name": product["name"],
-            "description": product["description"],
-            "interestRate": float(product["interest_rate"]),
-            "minAmount": float(product["min_amount"]),
-            "maxAmount": float(product["max_amount"]),
-            "tenure": product["tenure_months"],
-            "status": product["status"],
-            "eligibilityCriteria": product["eligibility_criteria"] or [],
-            "createdAt": product["created_at"].isoformat()
+            "message": "Financial product created successfully",
+            "product": product_doc
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating loan product: {e}")
+        logger.error(f"Error creating financial product: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 

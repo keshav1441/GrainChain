@@ -26,20 +26,12 @@ interface Farmer {
   status: 'active' | 'inactive';
 }
 
-interface FarmersStats {
-  totalFarmers: number;
-  activeBorrowers: number;
-  avgCreditScore: number;
-  totalDisbursed: number;
-}
 
 export const Farmers: React.FC = () => {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
-  const [stats, setStats] = useState<FarmersStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
-  const [creditScoreFilter, setCreditScoreFilter] = useState<number | ''>('');
 
   useEffect(() => {
     const fetchFarmersData = async () => {
@@ -48,21 +40,20 @@ export const Farmers: React.FC = () => {
         const params: any = {};
         if (searchTerm) params.search = searchTerm;
         if (locationFilter) params.location = locationFilter;
-        if (creditScoreFilter) params.credit_score_min = creditScoreFilter;
         
         const response = await financierApi.getFarmersData(params);
-        setFarmers(response.data.farmers);
-        setStats(response.data.stats);
+        setFarmers(response.data.farmers || []);
       } catch (error) {
         console.error('Error fetching farmers data:', error);
         toast.error('Failed to load farmers data');
+        setFarmers([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchFarmersData();
-  }, [searchTerm, locationFilter, creditScoreFilter]);
+  }, [searchTerm, locationFilter]);
 
   const filteredFarmers = farmers.filter(farmer => {
     const matchesSearch = farmer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

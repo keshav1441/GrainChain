@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { useAuthStore } from './stores/authStore';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -21,6 +21,7 @@ import {ApplicationDetails} from './pages/financier/ApplicationDetails';
 import {Farmers} from './pages/financier/Farmers';
 import {Analytics} from './pages/financier/Analytics';
 import {LoanProducts} from './pages/financier/LoanProducts';
+import {CreateProduct} from './pages/financier/CreateProduct';
 import {ProfilePage} from './pages/ProfilePage';
 import MarketplacePage from './pages/MarketplacePage';
 import FinancePage from './pages/FinancePage';
@@ -254,10 +255,28 @@ export default function App() {
               />
               
               <Route
+                path="/financier/loan-products"
+                element={
+                  <ProtectedRoute allowedRoles={['financier']}>
+                    <LoanProducts />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
                 path="/financier/products"
                 element={
                   <ProtectedRoute allowedRoles={['financier']}>
                     <LoanProducts />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/financier/products/create"
+                element={
+                  <ProtectedRoute allowedRoles={['financier']}>
+                    <CreateProduct />
                   </ProtectedRoute>
                 }
               />
