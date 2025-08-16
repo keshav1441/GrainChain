@@ -246,4 +246,84 @@ export const financierApi = {
     api.post('/finance/financier/financial-products', data),
 };
 
+// Cart API endpoints
+export const cartApi = {
+  // Cart management
+  addToCart: (data: {
+    crop_listing_id: string;
+    quantity: number;
+  }) => api.post('/cart/add', data),
+  
+  getCart: () => api.get('/cart'),
+  
+  updateCartItem: (itemId: string, data: { quantity: number }) => 
+    api.put(`/cart/${itemId}`, data),
+  
+  removeCartItem: (itemId: string) => 
+    api.delete(`/cart/${itemId}`),
+  
+  clearCart: () => api.delete('/cart/clear'),
+  
+  // Order management
+  createOrder: (data: {
+    items: Array<{
+      crop_listing_id: string;
+      quantity: number;
+    }>;
+    delivery_address: {
+      name: string;
+      phone: string;
+      address: string;
+      city: string;
+      state: string;
+      pincode: string;
+      landmark?: string;
+    };
+    payment_method: string;
+    order_notes?: string;
+    special_instructions?: string;
+  }) => api.post('/orders', data),
+  
+  getOrders: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) => api.get('/orders', { params }),
+  
+  getOrder: (orderId: string) => api.get(`/orders/${orderId}`),
+  
+  cancelOrder: (orderId: string, reason?: string) => 
+    api.put(`/orders/${orderId}/cancel`, { reason }),
+  
+  getOrderStats: () => api.get('/orders/stats'),
+};
+
+// Payment API endpoints
+export const paymentApi = {
+  createPayment: (data: {
+    order_id: string;
+    payment_method: string;
+    gateway_name?: string;
+  }) => api.post('/payments/create', data),
+  
+  verifyPayment: (data: {
+    payment_id: string;
+    gateway_payment_id: string;
+    gateway_order_id: string;
+    gateway_signature: string;
+  }) => api.post('/payments/verify', data),
+  
+  getPayment: (paymentId: string) => api.get(`/payments/${paymentId}`),
+  
+  processRefund: (paymentId: string, reason?: string) => 
+    api.post(`/payments/${paymentId}/refund`, { reason }),
+  
+  // Testing endpoints
+  simulateSuccess: (paymentId: string) => 
+    api.post(`/payments/simulate/success/${paymentId}`),
+  
+  simulateFailure: (paymentId: string) => 
+    api.post(`/payments/simulate/failure/${paymentId}`),
+};
+
 export default api;

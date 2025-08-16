@@ -3,20 +3,22 @@ import { Link } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
-  MapPinIcon,
-  StarIcon,
   HeartIcon,
+  StarIcon,
+  MapPinIcon,
+  UserIcon,
+  CheckBadgeIcon,
   ShoppingCartIcon,
   EyeIcon,
   CurrencyRupeeIcon,
-  CalendarIcon,
-  UserIcon,
-  CheckBadgeIcon,
-  TruckIcon,
   ScaleIcon,
+  PlusIcon,
+  MinusIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
-import { cropApi } from '../services/api';
+import { cropApi, cartApi } from '../services/api';
+import { useCartStore } from '../stores/cartStore';
+import toast from 'react-hot-toast';
 
 interface CropListing {
   id: string;
@@ -45,6 +47,8 @@ const MarketplacePage: React.FC = () => {
   const [sortBy, setSortBy] = useState('featured');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isVisible, setIsVisible] = useState(false);
+  const [quantities, setQuantities] = useState<{[key: string]: number}>({});
+  const { addToCart, getItemCount } = useCartStore();
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -80,6 +84,43 @@ const MarketplacePage: React.FC = () => {
         ? prev.filter(fav => fav !== id)
         : [...prev, id]
     );
+  };
+
+  const updateQuantity = (id: string, newQuantity: number, maxQuantity: number) => {
+    if (newQuantity >= 1 && newQuantity <= maxQuantity) {
+      setQuantities(prev => ({ ...prev, [id]: newQuantity }));
+    }
+  };
+
+  const handleAddToCart = async (listing: CropListing) => {
+    const selectedQuantity = quantities[listing.id] || 1;
+    
+    try {
+      // Add to backend cart
+      await cartApi.addToCart({
+        crop_listing_id: listing.id,
+        quantity: selectedQuantity
+      });
+      
+      // Update local cart store
+      addToCart({
+        id: listing.id,
+        crop_type: listing.crop_type,
+        price_per_kg: listing.price_per_kg,
+        quantity: listing.quantity,
+        farmer_id: listing.farmer_id,
+        farmer_name: listing.farmer_name,
+        location: listing.location,
+        image: listing.image,
+        max_quantity: listing.quantity,
+        selected_quantity: selectedQuantity,
+      });
+      
+      toast.success(`${listing.crop_type} added to cart!`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to add item to cart');
+      console.error('Add to cart error:', error);
+    }
   };
 
   const categories = [
@@ -191,79 +232,102 @@ const MarketplacePage: React.FC = () => {
                 {sortedListings.length} Products Found
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               {sortedListings.map((listing) => (
-                <div key={listing.id} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 overflow-hidden group">
-                  <div className="relative h-48 bg-gradient-to-br from-emerald-100 to-blue-100 flex items-center justify-center">
-                    <div className="text-6xl">{listing.image || '🌾'}</div>
-                    <button onClick={() => toggleFavorite(listing.id)} className="absolute bottom-4 right-4 p-2 bg-white/90 rounded-full hover:bg-white transition-colors">
+                <div key={listing.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] overflow-hidden group border border-gray-100">
+                  <div className="relative h-32 bg-gradient-to-br from-emerald-50 to-blue-50 flex items-center justify-center">
+                    <div className="text-4xl">{listing.image || '🌾'}</div>
+                    <button onClick={() => toggleFavorite(listing.id)} className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full hover:bg-white transition-colors shadow-sm">
                       {favorites.includes(listing.id) ? (
-                        <HeartSolidIcon className="h-5 w-5 text-red-500" />
+                        <HeartSolidIcon className="h-4 w-4 text-red-500" />
                       ) : (
-                        <HeartIcon className="h-5 w-5 text-gray-600" />
+                        <HeartIcon className="h-4 w-4 text-gray-600" />
                       )}
                     </button>
                   </div>
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="text-base font-semibold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">
                         {listing.crop_type}
                       </h3>
                       {listing.verified && (
-                        <CheckBadgeIcon className="h-6 w-6 text-blue-500 ml-2" />
+                        <CheckBadgeIcon className="h-4 w-4 text-blue-500 ml-1 flex-shrink-0" />
                       )}
                     </div>
-                    <div className="flex items-center text-gray-600 mb-3">
-                      <UserIcon className="h-4 w-4 mr-2" />
-                      <span className="text-sm">{listing.farmer_name || 'Unknown Farmer'}</span>
+                    <div className="flex items-center text-gray-600 mb-2">
+                      <UserIcon className="h-3 w-3 mr-1" />
+                      <span className="text-xs truncate">{listing.farmer_name || 'Unknown Farmer'}</span>
                     </div>
-                    <div className="flex items-center text-gray-600 mb-4">
-                      <MapPinIcon className="h-4 w-4 mr-2" />
-                      <span className="text-sm">{listing.location}</span>
+                    <div className="flex items-center text-gray-600 mb-2">
+                      <MapPinIcon className="h-3 w-3 mr-1" />
+                      <span className="text-xs truncate">{listing.location}</span>
                     </div>
-                    <div className="flex items-center mb-4">
+                    <div className="flex items-center mb-3">
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
-                          <StarIcon key={i} className={`h-4 w-4 ${i < Math.floor(listing.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
+                          <StarIcon key={i} className={`h-3 w-3 ${i < Math.floor(listing.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
                         ))}
                       </div>
-                      <span className="text-sm text-gray-600 ml-2">
-                        {listing.rating?.toFixed(1)} ({listing.reviews} reviews)
+                      <span className="text-xs text-gray-600 ml-1">
+                        {listing.rating?.toFixed(1)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center text-2xl font-bold text-emerald-600">
-                        <CurrencyRupeeIcon className="h-6 w-6" />
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center text-lg font-bold text-emerald-600">
+                        <CurrencyRupeeIcon className="h-4 w-4" />
                         {listing.price_per_kg}
-                        <span className="text-sm text-gray-600 ml-1">/kg</span>
+                        <span className="text-xs text-gray-600 ml-1">/kg</span>
                       </div>
-                      <div className="text-sm text-gray-600">
-                        <ScaleIcon className="h-4 w-4 inline mr-1" />
-                        {listing.quantity} kg available
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-6">
-                      <div className="flex items-center">
-                        <CalendarIcon className="h-4 w-4 mr-1" />
-                        Harvested: {listing.harvestDate ? new Date(listing.harvestDate).toLocaleDateString() : 'N/A'}
-                      </div>
-                      <div className="flex items-center">
-                        <TruckIcon className="h-4 w-4 mr-1" />
-                        {listing.deliveryTime}
+                      <div className="text-xs text-gray-600">
+                        <ScaleIcon className="h-3 w-3 inline mr-1" />
+                        {listing.quantity} kg
                       </div>
                     </div>
-                    <div className="flex space-x-3">
-                      <button className="flex-1 bg-emerald-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center">
-                        <ShoppingCartIcon className="h-5 w-5 mr-2" />
-                        Add to Cart
-                      </button>
-                      <Link
-                        to={`/marketplace/${listing.id}`}
-                        className="px-4 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center"
-                        title="View Details"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </Link>
+                    <div className="space-y-2">
+                      {/* Compact Quantity Selector */}
+                      <div className="flex items-center justify-between bg-gray-50 rounded-lg p-2">
+                        <span className="text-xs font-medium text-gray-700">Qty:</span>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => updateQuantity(listing.id, (quantities[listing.id] || 1) - 1, listing.quantity)}
+                            className="p-0.5 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
+                            disabled={(quantities[listing.id] || 1) <= 1}
+                          >
+                            <MinusIcon className="h-3 w-3 text-gray-600" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-medium">{quantities[listing.id] || 1}</span>
+                          <button
+                            onClick={() => updateQuantity(listing.id, (quantities[listing.id] || 1) + 1, listing.quantity)}
+                            className="p-0.5 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
+                            disabled={(quantities[listing.id] || 1) >= listing.quantity}
+                          >
+                            <PlusIcon className="h-3 w-3 text-gray-600" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Compact Action Buttons */}
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => handleAddToCart(listing)}
+                          className="flex-1 bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center relative"
+                        >
+                          <ShoppingCartIcon className="h-3 w-3 mr-1" />
+                          Add
+                          {getItemCount(listing.id) > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                              {getItemCount(listing.id)}
+                            </span>
+                          )}
+                        </button>
+                        <Link
+                          to={`/marketplace/${listing.id}`}
+                          className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"
+                          title="View Details"
+                        >
+                          <EyeIcon className="h-3 w-3" />
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>

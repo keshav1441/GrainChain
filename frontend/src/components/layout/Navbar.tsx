@@ -7,14 +7,17 @@ import {
   XMarkIcon,
   UserCircleIcon,
   ChevronDownIcon,
+  ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
 
 import { useAuthStore } from '../../stores/authStore';
+import { useCartStore } from '../../stores/cartStore';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 
 export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { getTotalItems } = useCartStore();
   const navigate = useNavigate();
   
   const authenticated = isAuthenticated();
@@ -88,6 +91,19 @@ export const Navbar: React.FC = () => {
                   className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium"
                 >
                   Dashboard
+                </Link>
+
+                {/* Cart */}
+                <Link
+                  to="/cart"
+                  className="relative p-2 text-gray-700 hover:text-emerald-600 transition-colors"
+                >
+                  <ShoppingCartIcon className="h-6 w-6" />
+                  {getTotalItems() > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                      {getTotalItems()}
+                    </span>
+                  )}
                 </Link>
 
                 {/* Notifications */}

@@ -11,7 +11,12 @@ import {
   CheckBadgeIcon,
   CurrencyRupeeIcon,
   ShieldCheckIcon,
+  ShoppingCartIcon,
+  PlusIcon,
+  MinusIcon,
 } from '@heroicons/react/24/outline';
+import { useCartStore } from '../stores/cartStore';
+import toast from 'react-hot-toast';
 
 // Simplified interface to match the backend response
 interface CropListing {
@@ -36,6 +41,8 @@ const ProductDetailPage: React.FC = () => {
   const [product, setProduct] = useState<CropListing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const { addToCart, getItemCount } = useCartStore();
 
   useEffect(() => {
     if (!id) {
@@ -66,6 +73,37 @@ const ProductDetailPage: React.FC = () => {
 
     fetchProduct();
   }, [id]);
+
+  const updateQuantity = (newQuantity: number) => {
+    if (product && newQuantity >= 1 && newQuantity <= product.quantity) {
+      setQuantity(newQuantity);
+    }
+  };
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    
+    addToCart({
+      id: product.id,
+      crop_type: product.crop_type,
+      price_per_kg: product.price_per_kg,
+      quantity: product.quantity,
+      farmer_id: product.farmer_id,
+      farmer_name: product.farmer_name,
+      location: product.location,
+      image: '🌾',
+      max_quantity: product.quantity,
+      selected_quantity: quantity,
+    });
+    toast.success(`${product.crop_type} added to cart!`);
+  };
+
+  const handleBuyNow = () => {
+    if (!product) return;
+    
+    handleAddToCart();
+    navigate('/cart');
+  };
 
   if (isLoading) {
     return (
@@ -173,9 +211,59 @@ const ProductDetailPage: React.FC = () => {
                       <span className="text-lg text-gray-600 ml-1">/kg</span>
                     </div>
                   </div>
-                  <button className="w-full bg-emerald-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:bg-emerald-700 transition-colors">
-                    Make Inquiry
-                  </button>
+                  
+                  {/* Quantity Selector */}
+                  <div className="flex items-center justify-between bg-white rounded-lg p-4 mb-4">
+                    <span className="text-lg font-medium text-gray-700">Quantity (kg):</span>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => updateQuantity(quantity - 1)}
+                        className="p-2 rounded-full bg-gray-100 border border-gray-300 hover:bg-gray-200 transition-colors"
+                        disabled={quantity <= 1}
+                      >
+                        <MinusIcon className="h-5 w-5 text-gray-600" />
+                      </button>
+                      <span className="w-16 text-center text-xl font-semibold">{quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(quantity + 1)}
+                        className="p-2 rounded-full bg-gray-100 border border-gray-300 hover:bg-gray-200 transition-colors"
+                        disabled={quantity >= product.quantity}
+                      >
+                        <PlusIcon className="h-5 w-5 text-gray-600" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Total Price */}
+                  <div className="flex items-center justify-between mb-6 p-4 bg-emerald-50 rounded-lg">
+                    <span className="text-lg font-medium text-gray-700">Total:</span>
+                    <div className="flex items-center text-2xl font-bold text-emerald-600">
+                      <CurrencyRupeeIcon className="h-6 w-6" />
+                      {(product.price_per_kg * quantity).toLocaleString()}
+                    </div>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    <button 
+                      onClick={handleBuyNow}
+                      className="w-full bg-orange-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:bg-orange-700 transition-colors"
+                    >
+                      Buy Now
+                    </button>
+                    <button 
+                      onClick={handleAddToCart}
+                      className="w-full bg-emerald-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:bg-emerald-700 transition-colors flex items-center justify-center relative"
+                    >
+                      <ShoppingCartIcon className="h-6 w-6 mr-2" />
+                      Add to Cart
+                      {getItemCount(product.id) > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">
+                          {getItemCount(product.id)}
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

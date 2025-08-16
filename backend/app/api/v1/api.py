@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, buyer, crops, users, ai_ml, finance, inquiries
+from app.api.v1.endpoints import auth, buyer, crops, users, ai_ml, finance, inquiries, cart, payments
 
 api_router = APIRouter()
 
@@ -23,6 +23,12 @@ api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
 
 # Include inquiries routes
 api_router.include_router(inquiries.router, prefix="/inquiries", tags=["inquiries"])
+
+# Include cart routes
+api_router.include_router(cart.router, tags=["cart"])
+
+# Include payment routes
+api_router.include_router(payments.router, tags=["payments"])
 
 # Health check endpoint
 @api_router.get("/health")

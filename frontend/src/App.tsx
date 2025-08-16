@@ -29,6 +29,9 @@ import NotificationsPage from './pages/NotificationsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import ContactPage from './pages/ContactPage';
 import PaymentDashboard from './pages/PaymentDashboard';
+import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
+import OrderSuccessPage from './pages/OrderSuccessPage';
 import {ProtectedRoute} from './components/auth/ProtectedRoute';
 import {Footer} from './components/layout/Footer';
 import { Toaster } from 'react-hot-toast';
@@ -88,6 +91,9 @@ export default function App() {
               <Route path="/marketplace/:id" element={<ProductDetailPage />} />
               <Route path="/finance" element={<FinancePage />} />
               <Route path="/contact" element={<ContactPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/order-success" element={<OrderSuccessPage />} />
               <Route 
                 path="/login" 
                 element={
