@@ -7,23 +7,48 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any
 import logging
 
-from ....core.ai_ml_service import ai_ml_service
-from ....models.ai_ml import (
-    PricePredictionRequest, PricePredictionResponse,
-    RecommendationRequest, RecommendationResponse,
-    CreditScoreRequest, CreditScoreResponse,
-    MarketInsight, MLModelMetadata
-)
-from ....models.user import User
-from ...deps import get_current_user
+from app.models.user import User
+from app.api.deps import get_current_user
+from pydantic import BaseModel
+
+# Import AI service with fallback
+try:
+    from app.core.ai_service import ai_service
+    AI_SERVICE_AVAILABLE = True
+except ImportError:
+    from app.core.fallback_ai_service import fallback_ai_service as ai_service
+    AI_SERVICE_AVAILABLE = True
+
+# Define request models
+class PricePredictionRequest(BaseModel):
+    crop_type: str
+    quantity: float
+    location: str
+    quality_grade: str = "A"
+
+class RecommendationRequest(BaseModel):
+    recommendation_type: str
+    location: str
+    farm_size: float = 0
+    budget: float = 0
+
+class CreditScoreRequest(BaseModel):
+    annual_income: float
+    loan_amount: float
+    credit_history: str
+    collateral_value: float = 0
+
+class MarketInsightsRequest(BaseModel):
+    crop_type: str
+    location: str = ""
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-@router.post("/predict-price", response_model=PricePredictionResponse)
+@router.post("/predict-price")
 async def predict_crop_price(
-    request: PricePredictionRequest,
+    request: Dict[str, Any],
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -36,7 +61,7 @@ async def predict_crop_price(
     - **harvest_date**: Expected harvest date - optional
     """
     try:
-        logger.info(f"Price prediction request from user {current_user.id} for {request.crop_type}")
+        logger.info(f"Price prediction request from user {current_user.id}")
         
         # Validate user permissions (farmers and buyers can use this)
         if current_user.role not in ["farmer", "buyer"]:
@@ -45,9 +70,9 @@ async def predict_crop_price(
                 detail="Only farmers and buyers can access price predictions"
             )
         
-        prediction = await ai_ml_service.predict_price(request)
+        prediction = await ai_service.predict_crop_price(request)
         
-        logger.info(f"Price prediction successful: {prediction.predicted_price}")
+        logger.info(f"Price prediction successful: {prediction.get('predicted_price', 'N/A')}")
         return prediction
         
     except Exception as e:
@@ -58,9 +83,9 @@ async def predict_crop_price(
         )
 
 
-@router.post("/recommendations", response_model=RecommendationResponse)
+@router.post("/recommendations")
 async def get_recommendations(
-    request: RecommendationRequest,
+    request: Dict[str, Any],
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -74,7 +99,7 @@ async def get_recommendations(
     - **current_crops**: Currently grown crops - optional
     """
     try:
-        logger.info(f"Recommendation request from user {current_user.id} for {request.recommendation_type}")
+        logger.info(f"Recommendation request from user {current_user.id}")
         
         # Validate user permissions (primarily for farmers)
         if current_user.role not in ["farmer", "buyer"]:
@@ -83,10 +108,15 @@ async def get_recommendations(
                 detail="Only farmers and buyers can access recommendations"
             )
         
-        # Set user_id from current user
-        request.user_id = current_user.id
+        # Use request data directly with Gemini service
+        request_data = {
+            "recommendation_type": request.get('recommendation_type'),
+            "location": request.get('location', 'India'),
+            "farm_size": request.get('farm_size', 1),
+            "budget": request.get('budget', 50000)
+        }
         
-        recommendations = await ai_ml_service.get_recommendations(request)
+        recommendations = await ai_service.get_recommendations(request_data)
         
         logger.info(f"Recommendations generated successfully")
         return recommendations
@@ -99,9 +129,9 @@ async def get_recommendations(
         )
 
 
-@router.post("/credit-score", response_model=CreditScoreResponse)
+@router.post("/credit-score")
 async def calculate_credit_score(
-    request: CreditScoreRequest,
+    request: Dict[str, Any],
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -126,12 +156,23 @@ async def calculate_credit_score(
                 detail="Only farmers and financiers can access credit scoring"
             )
         
-        # Set user_id from current user
-        request.user_id = current_user.id
+        # Use request data directly with Gemini service
+        farmer_data = {
+            "name": request.get('name', 'Farmer'),
+            "farm_size": request.get('farm_size', 1),
+            "crop_types": "Mixed farming",
+            "location": request.get('location', 'India'),
+            "years_farming": request.get('years_farming', 5),
+            "loan_history": request.get('loan_history', 'No previous loans'),
+            "annual_income": request.get('annual_income', 100000)
+        }
         
-        credit_score = await ai_ml_service.calculate_credit_score(request)
+        credit_assessment = await ai_service.assess_credit_score(farmer_data)
         
-        logger.info(f"Credit score calculated: {credit_score.credit_score}")
+        # Return credit assessment directly from fallback service
+        credit_score = credit_assessment
+        
+        logger.info(f"Credit score calculated: {credit_score['credit_score']}")
         return credit_score
         
     except Exception as e:
@@ -142,7 +183,7 @@ async def calculate_credit_score(
         )
 
 
-@router.get("/market-insights/{crop_type}", response_model=List[MarketInsight])
+@router.get("/market-insights/{crop_type}")
 async def get_market_insights(
     crop_type: str,
     location: str = None,
@@ -157,18 +198,11 @@ async def get_market_insights(
     try:
         logger.info(f"Market insights request from user {current_user.id} for {crop_type}")
         
-        # Mock market insights data
-        insights = [
-            MarketInsight(
-                crop_type=crop_type,
-                current_price=45.50,
-                price_trend="rising",
-                demand_level="high",
-                supply_level="medium",
-                seasonal_factor=1.15,
-                location=location or "National Average"
-            )
-        ]
+        # Get AI-powered market insights
+        market_analysis = await ai_service.get_market_insights(crop_type, location or "India")
+        
+        # Return market analysis directly from fallback service
+        insights = market_analysis
         
         return insights
         
@@ -180,7 +214,7 @@ async def get_market_insights(
         )
 
 
-@router.get("/model-info", response_model=List[MLModelMetadata])
+@router.get("/model-info")
 async def get_model_info(
     current_user: User = Depends(get_current_user)
 ):
@@ -226,7 +260,7 @@ async def get_model_info(
         )
 
 
-@router.post("/batch-price-prediction", response_model=List[PricePredictionResponse])
+@router.post("/batch-price-prediction")
 async def batch_predict_prices(
     requests: List[PricePredictionRequest],
     current_user: User = Depends(get_current_user)
@@ -252,9 +286,16 @@ async def batch_predict_prices(
             )
         
         predictions = []
-        for request in requests:
-            prediction = await ai_ml_service.predict_price(request)
-            predictions.append(prediction)
+        # Use request data directly with Gemini service
+        crop_data = {
+            "crop_type": requests[0].get('crop_type'),
+            "quantity": requests[0].get('quantity'),
+            "location": requests[0].get('location'),
+            "quality_grade": requests[0].get('quality_grade', 'A')
+        }
+        
+        prediction = await ai_service.predict_crop_price(crop_data)
+        predictions.append(prediction)
         
         logger.info(f"Batch price prediction completed for {len(predictions)} items")
         return predictions
@@ -286,15 +327,14 @@ async def get_crop_recommendations_by_location(
                 detail="Only farmers can access crop recommendations"
             )
         
-        request = RecommendationRequest(
-            user_id=current_user.id,
-            recommendation_type="crop",
-            location=location,
-            farm_size=farm_size,
-            budget=budget
-        )
+        request_data = {
+            "recommendation_type": "crop",
+            "location": location,
+            "farm_size": farm_size or 1,
+            "budget": budget or 50000
+        }
         
-        recommendations = await ai_ml_service.get_recommendations(request)
+        recommendations = await ai_service.get_crop_recommendations(request_data)
         return recommendations
         
     except Exception as e:

@@ -8,6 +8,7 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
 import { financierApi } from '../../services/api';
@@ -419,7 +420,7 @@ export const FinancierDashboard: React.FC = () => {
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
               Quick Actions
             </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <Link to="/financier/applications" className="inline-flex items-center justify-start px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
                 <DocumentTextIcon className="h-5 w-5 mr-2" />
                 Review Applications
@@ -435,6 +436,10 @@ export const FinancierDashboard: React.FC = () => {
               <Link to="/financier/products" className="inline-flex items-center justify-start px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
                 <CurrencyDollarIcon className="h-5 w-5 mr-2" />
                 Loan Products
+              </Link>
+              <Link to="/ai-features" className="inline-flex items-center justify-start px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                <SparklesIcon className="h-5 w-5 mr-2" />
+                AI Features
               </Link>
             </div>
           </div>

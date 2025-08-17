@@ -8,6 +8,7 @@ import {
   UserCircleIcon,
   ChevronDownIcon,
   ShoppingCartIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 import { useAuthStore } from '../../stores/authStore';
@@ -83,6 +84,13 @@ export const Navbar: React.FC = () => {
               className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium"
             >
               Finance
+            </Link>
+            <Link
+              to="/ai-features"
+              className="text-gray-700 hover:text-primary-600 px-3 py-2 text-sm font-medium flex items-center"
+            >
+              <SparklesIcon className="h-4 w-4 mr-1" />
+              AI Features
             </Link>
             {authenticated ? (
               <>
@@ -243,6 +251,14 @@ export const Navbar: React.FC = () => {
               onClick={() => setMobileMenuOpen(false)}
             >
               Finance
+            </Link>
+            <Link
+              to="/ai-features"
+              className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium flex items-center"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <SparklesIcon className="h-4 w-4 mr-1" />
+              AI Features
             </Link>
             {authenticated ? (
               <>

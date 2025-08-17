@@ -32,6 +32,7 @@ import PaymentDashboard from './pages/PaymentDashboard';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
+import AIFeaturesPage from './pages/AIFeaturesPage';
 import {ProtectedRoute} from './components/auth/ProtectedRoute';
 import {Footer} from './components/layout/Footer';
 import { Toaster } from 'react-hot-toast';
@@ -90,6 +91,7 @@ export default function App() {
               <Route path="/marketplace" element={<MarketplacePage />} />
               <Route path="/marketplace/:id" element={<ProductDetailPage />} />
               <Route path="/finance" element={<FinancePage />} />
+              <Route path="/ai-features" element={<AIFeaturesPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />

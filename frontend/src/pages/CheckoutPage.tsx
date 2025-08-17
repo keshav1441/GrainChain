@@ -137,62 +137,89 @@ const CheckoutPage: React.FC = () => {
           } 
         });
       } else {
-        // Create payment for other methods
-        const paymentResponse = await paymentApi.createPayment({
-          order_id: order.id,
-          payment_method: selectedPaymentMethod,
-          gateway_name: selectedPaymentMethod === 'upi' ? 'razorpay' : selectedPaymentMethod
-        });
+        let payment;
+        let paymentMethodName = '';
         
-        const payment = paymentResponse.data;
-        
-        // Handle different payment methods
-        if (selectedPaymentMethod === 'card' || selectedPaymentMethod === 'upi') {
-          // For demo purposes, simulate payment success
-          await paymentApi.simulateSuccess(payment.payment_id);
-          
-          clearCart();
-          toast.success('Payment completed successfully!');
-          navigate('/order-success', { 
-            state: { 
-              orderId: order.order_id,
-              amount: order.total_amount,
-              items: order.items.length,
-              paymentMethod: selectedPaymentMethod === 'card' ? 'Credit/Debit Card' : 'UPI',
-              paymentId: payment.payment_id
-            } 
+        // Use method-specific endpoints for better handling
+        if (selectedPaymentMethod === 'upi') {
+          // UPI Payment
+          const paymentResponse = await paymentApi.initiateUPIPayment({
+            order_id: order.id,
+            upi_provider: 'googlepay'
           });
-        } else if (selectedPaymentMethod === 'wallet') {
-          // Wallet payment simulation
-          await paymentApi.simulateSuccess(payment.payment_id);
+          payment = paymentResponse.data;
           
-          clearCart();
-          toast.success('Wallet payment completed!');
-          navigate('/order-success', { 
-            state: { 
-              orderId: order.order_id,
-              amount: order.total_amount,
-              items: order.items.length,
-              paymentMethod: 'Digital Wallet',
-              paymentId: payment.payment_id
-            } 
+          // Verify UPI payment
+          await paymentApi.verifyUPIPayment({
+            payment_id: payment.payment_id,
+            upi_transaction_id: `upi_${Date.now()}`,
+            upi_ref_id: `ref_${Date.now()}`
           });
+          
+          paymentMethodName = 'UPI';
+          
+        } else if (selectedPaymentMethod === 'card') {
+          // Card Payment
+          const paymentResponse = await paymentApi.initiateCardPayment({
+            order_id: order.id,
+            card_type: 'visa'
+          });
+          payment = paymentResponse.data;
+          
+          // Verify card payment
+          await paymentApi.verifyCardPayment({
+            payment_id: payment.payment_id,
+            gateway_payment_id: `card_${Date.now()}`,
+            gateway_signature: 'verified',
+            auth_code: `auth_${Date.now()}`
+          });
+          
+          paymentMethodName = 'Credit/Debit Card';
+          
         } else if (selectedPaymentMethod === 'netbanking') {
-          // Net banking simulation
-          await paymentApi.simulateSuccess(payment.payment_id);
-          
-          clearCart();
-          toast.success('Net banking payment completed!');
-          navigate('/order-success', { 
-            state: { 
-              orderId: order.order_id,
-              amount: order.total_amount,
-              items: order.items.length,
-              paymentMethod: 'Net Banking',
-              paymentId: payment.payment_id
-            } 
+          // Net Banking Payment
+          const paymentResponse = await paymentApi.initiateNetBankingPayment({
+            order_id: order.id,
+            bank_code: 'sbi',
+            account_holder_name: deliveryAddress.name
           });
+          payment = paymentResponse.data;
+          
+          // Verify net banking payment
+          await paymentApi.verifyNetBankingPayment({
+            payment_id: payment.payment_id,
+            bank_transaction_id: `nb_${Date.now()}`,
+            bank_ref_id: `nbref_${Date.now()}`
+          });
+          
+          paymentMethodName = 'Net Banking';
+          
+        } else if (selectedPaymentMethod === 'wallet') {
+          // Wallet payment - use generic payment creation
+          const paymentResponse = await paymentApi.createPayment({
+            order_id: order.id,
+            payment_method: selectedPaymentMethod,
+            gateway_name: 'razorpay'
+          });
+          payment = paymentResponse.data;
+          
+          // Simulate wallet payment success
+          await paymentApi.simulateSuccess(payment.payment_id);
+          paymentMethodName = 'Digital Wallet';
         }
+        
+        // Success handling for all payment methods
+        clearCart();
+        toast.success(`${paymentMethodName} payment completed successfully!`);
+        navigate('/order-success', { 
+          state: { 
+            orderId: order.order_id,
+            amount: order.total_amount,
+            items: order.items.length,
+            paymentMethod: paymentMethodName,
+            paymentId: payment.payment_id
+          } 
+        });
       }
       
     } catch (error: any) {

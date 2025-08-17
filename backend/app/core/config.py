@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     SMS_API_KEY: Optional[str] = None
     PAYMENT_GATEWAY_KEY: Optional[str] = None
     
+    # AI/ML Configuration
+    GEMINI_API_KEY: str = "AIzaSyB5i1za3A2q2mvYAAuAcG7JsNpgJwfYDtw"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    
     # Email Settings
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

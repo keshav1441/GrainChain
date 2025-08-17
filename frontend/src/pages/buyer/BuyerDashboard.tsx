@@ -7,6 +7,7 @@ import {
   ChartBarIcon,
   UserGroupIcon,
   ClockIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
 import { buyerApi } from '../../services/api';
@@ -359,7 +360,7 @@ export const BuyerDashboard: React.FC = () => {
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
               Quick Actions
             </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <Link to="/marketplace">
                 <Button variant="outline" className="justify-start w-full">
                   <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
@@ -382,6 +383,12 @@ export const BuyerDashboard: React.FC = () => {
                 <Button variant="outline" className="justify-start w-full">
                   <TruckIcon className="h-5 w-5 mr-2" />
                   Track Inquiries
+                </Button>
+              </Link>
+              <Link to="/ai-features">
+                <Button variant="outline" className="justify-start w-full">
+                  <SparklesIcon className="h-5 w-5 mr-2" />
+                  AI Features
                 </Button>
               </Link>
             </div>

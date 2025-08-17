@@ -6,6 +6,7 @@ import {
   CurrencyDollarIcon,
   TruckIcon,
   BellIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
 import { cropApi } from '../../services/api';
@@ -243,10 +244,10 @@ export const FarmerDashboard: React.FC = () => {
                   Apply for Loan
                 </Button>
               </Link>
-              <Link to="/farmer/profile">
+              <Link to="/ai-features">
                 <Button variant="outline" className="justify-start w-full">
-                  <BellIcon className="h-5 w-5 mr-2" />
-                  Update Profile
+                  <SparklesIcon className="h-5 w-5 mr-2" />
+                  AI Features
                 </Button>
               </Link>
             </div>
