@@ -1,11 +1,15 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from ....core.database import get_db, get_collection
 from ....api.deps import get_current_user
 from pydantic import BaseModel
 from datetime import datetime
+from bson import ObjectId
 from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from bson import ObjectId
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 from app.models.user import User
 from app.models.crop import Inquiry, InquiryStatus
@@ -130,85 +134,110 @@ async def get_buyer_inquiries(
             detail="Only buyers can access buyer inquiries"
         )
     
-    # Get inquiries collection first
-    inquiries_collection = get_collection("inquiries")
-    
-    # Debug: Print first few documents to check data format
-    sample_docs = await inquiries_collection.find({}).limit(3).to_list(3)
-    print(f"Sample documents in inquiries collection: {sample_docs}")
-    
-    # Build query - use the exact field names from the database
-    buyer_id = str(current_user.id)
-    query = {"buyer_id": buyer_id}  # Match string buyer_id
-    
+    # Build the base query
+    query = {"buyer_id": str(current_user.id)}
     if status:
         query["status"] = status.value
+
+    # Get the collection
+    inquiries_collection = get_collection("inquiries")
+    
+    # Log the query for debugging
+    logger.info(f"Querying inquiries with filter: {query}")
+    
+    try:
+        # First, convert string IDs to ObjectId for the query
+        from bson.objectid import ObjectId
         
-    print(f"Querying inquiries with: {query}")  # Debug log
-    
-    # Get inquiries with listing details
-    pipeline = [
-        {"$match": query},
-        {
-            "$lookup": {
-                "from": "crop_listings",
-                "localField": "crop_listing_id",  # Changed from listing_id to match the actual field
-                "foreignField": "_id",
-                "as": "listing"
-            }
-        },
-        {
-            "$lookup": {
-                "from": "users",
-                "localField": "farmer_id",
-                "foreignField": "_id",
-                "as": "farmer"
-            }
-        },
-        {"$unwind": "$listing"},
-        {"$unwind": "$farmer"},
-        {"$sort": {"created_at": -1}},
-        {"$skip": skip},
-        {"$limit": limit}
-    ]
-    
-    cursor = inquiries_collection.aggregate(pipeline)
-    results = await cursor.to_list(length=limit)
-    
-    print(f"Found {len(results)} raw inquiry results")  # Debug log
-    
-    # Get user's full name
-    users_collection = get_collection("users")
-    user = await users_collection.find_one({"_id": ObjectId(current_user.id)})
-    buyer_name = user.get("full_name", "") if user else ""
-    
-    print(f"Current user: {current_user.id}, Buyer name: {buyer_name}")  # Debug log
-    
-    # Convert to response format
-    response = []
-    for result in results:
-        # Get listing details if available
-        listing = result.get('listing', [{}])[0] if result.get('listing') else {}
-        
-        response.append({
-            "id": str(result.get("_id", "")),
-            "listing_id": str(result.get("crop_listing_id", "")),
-            "buyer_id": str(result.get("buyer_id", "")),
-            "buyer_name": buyer_name,
-            "quantity": result.get("quantity_requested", 0),
-            "proposed_price": result.get("proposed_price", 0),
-            "notes": result.get("message", ""),
-            "status": result.get("status", "pending"),
-            "created_at": result.get("created_at", datetime.utcnow()),
-            "listing": {
-                "crop_name": listing.get("crop_name", "Unknown Crop"),
-                "farmer": {
-                    "full_name": result.get("farmer_name", "Unknown Farmer")
+        # Create aggregation pipeline with proper type conversion
+        pipeline = [
+            {"$match": query},
+            {
+                "$lookup": {
+                    "from": "crop_listings",
+                    "let": {"crop_listing_oid": {"$toObjectId": "$crop_listing_id"}},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$eq": ["$_id", "$$crop_listing_oid"]}}},
+                        {"$limit": 1}
+                    ],
+                    "as": "listing"
                 }
-            }
-        })
+            },
+            {"$unwind": {"path": "$listing", "preserveNullAndEmptyArrays": True}},
+            {
+                "$lookup": {
+                    "from": "users",
+                    "let": {"farmer_oid": {"$toObjectId": "$farmer_id"}},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$eq": ["$_id", "$$farmer_oid"]}}},
+                        {"$limit": 1}
+                    ],
+                    "as": "farmer"
+                }
+            },
+            {"$unwind": {"path": "$farmer", "preserveNullAndEmptyArrays": True}},
+            {"$sort": {"created_at": -1}},
+            {"$skip": skip},
+            {"$limit": limit}
+        ]
     
-    return response
+        # Execute the aggregation
+        cursor = inquiries_collection.aggregate(pipeline)
+        results = await cursor.to_list(length=None)
+        
+        # Log the number of results found
+        logger.info(f"Found {len(results)} inquiries")
+        
+        # Process the results
+        response = []
+        for result in results:
+            try:
+                # Extract listing and farmer data
+                listing = result.get("listing", {}) or {}
+                farmer = result.get("farmer", {}) or {}
+                
+                # Log data for debugging
+                logger.debug(f"Processing inquiry: {result.get('_id')}")
+                
+                # Create the response object according to InquiryResponse model
+                inquiry_data = {
+                    "id": str(result.get("_id")),  # Changed from _id to id
+                    "listing_id": str(result.get("crop_listing_id")),
+                    "buyer_id": str(result.get("buyer_id")),
+                    "buyer_name": current_user.full_name,  # Add buyer_name from current_user
+                    "farmer_id": str(result.get("farmer_id")),
+                    "quantity": result.get("quantity_requested"),  # Changed from quantity_requested to quantity
+                    "proposed_price": result.get("proposed_price"),
+                    "message": result.get("message"),
+                    "status": result.get("status"),
+                    "farmer_response": result.get("farmer_response"),
+                    "counter_price": result.get("farmer_counter_price"),
+                    "created_at": result.get("created_at"),
+                    "updated_at": result.get("updated_at"),
+                    "preferred_delivery_date": result.get("preferred_delivery_date"),
+                    "listing": {
+                        "crop_name": listing.get("crop_name", "Unknown Crop"),
+                        "farmer": {
+                            "full_name": farmer.get("full_name", "Unknown Farmer")
+                        }
+                    }
+                }
+                
+                # Create response model instance to validate
+                response.append(InquiryResponse(**inquiry_data))
+                
+            except Exception as e:
+                logger.error(f"Error processing inquiry {result.get('_id')}: {str(e)}", exc_info=True)
+                continue
+                
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error in get_buyer_inquiries: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while fetching inquiries: {str(e)}"
+        )
 
 @buyer_router.get("/inquiries/{inquiry_id}", response_model=InquiryResponse)
 async def get_buyer_inquiry(
