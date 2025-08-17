@@ -25,24 +25,12 @@ export const FarmerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data for stats and inquiries, as API endpoints are not yet integrated
+  // Stats data
   const stats = [
     { name: 'Active Listings', value: listings.filter(l => l.status === 'available').length, icon: ChartBarIcon },
     { name: 'Total Revenue', value: '₹0', icon: CurrencyDollarIcon },
     { name: 'Pending Orders', value: '0', icon: TruckIcon },
     { name: 'New Inquiries', value: '0', icon: BellIcon },
-  ];
-
-  const recentInquiries = [
-    {
-      id: 1,
-      buyer: 'AgriCorp Ltd.',
-      crop: 'Wheat',
-      quantity: '20 tons',
-      offeredPrice: '₹24,500/ton',
-      status: 'Pending',
-      time: '2 hours ago',
-    },
   ];
 
   useEffect(() => {
@@ -162,7 +150,7 @@ export const FarmerDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Recent Inquiries (Mock Data) */}
+          {/* Recent Inquiries */}
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center justify-between mb-4">
@@ -176,44 +164,23 @@ export const FarmerDashboard: React.FC = () => {
                   View all
                 </Link>
               </div>
-              <div className="flow-root">
-                <ul className="-my-5 divide-y divide-gray-200">
-                  {recentInquiries.map((inquiry) => (
-                    <li key={inquiry.id} className="py-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <span className="text-blue-600 font-semibold text-sm">
-                              {inquiry.buyer[0]}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {inquiry.buyer}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {inquiry.crop} • {inquiry.quantity} • {inquiry.offeredPrice}
-                          </p>
-                          <p className="text-xs text-gray-400">{inquiry.time}</p>
-                        </div>
-                        <div className="flex-shrink-0">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              inquiry.status === 'Pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : inquiry.status === 'Accepted'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {inquiry.status}
-                          </span>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+              <div className="text-center py-8">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                  />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No inquiries</h3>
+                <p className="mt-1 text-sm text-gray-500">You don't have any inquiries yet. Check back later!</p>
               </div>
             </div>
           </div>

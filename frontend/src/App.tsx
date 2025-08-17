@@ -7,10 +7,14 @@ import {HomePage} from './pages/HomePage';
 import {LoginPage} from './pages/auth/LoginPage';
 import {RegisterPage} from './pages/auth/RegisterPage';
 import {FarmerDashboard} from './pages/farmer/FarmerDashboard';
+import {FarmerListings} from './pages/farmer/FarmerListings';
+import {ViewListing} from './pages/farmer/ViewListing';
+import {EditListing} from './pages/farmer/EditListing';
 import {CreateListing} from './pages/farmer/CreateListing';
 import {FarmerAnalytics} from './pages/farmer/FarmerAnalytics';
 import {FarmerFinance} from './pages/farmer/FarmerFinance';
 import {FarmerProfile} from './pages/farmer/FarmerProfile';
+import {FarmerInquiries} from './pages/farmer/FarmerInquiries';
 import {BuyerDashboard} from './pages/buyer/BuyerDashboard';
 import {BuyerFarmers} from './pages/buyer/BuyerFarmers';
 import {BuyerInquiries} from './pages/buyer/BuyerInquiries';
@@ -152,10 +156,34 @@ export default function App() {
               />
               
               <Route
+                path="/farmer/listings"
+                element={
+                  <ProtectedRoute allowedRoles={['farmer']}>
+                    <FarmerListings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/farmer/listings/new"
                 element={
                   <ProtectedRoute allowedRoles={['farmer']}>
                     <CreateListing />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/listings/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['farmer']}>
+                    <ViewListing />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/listings/:id/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['farmer']}>
+                    <EditListing />
                   </ProtectedRoute>
                 }
               />
@@ -183,6 +211,15 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['farmer']}>
                     <FarmerProfile />
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/farmer/inquiries"
+                element={
+                  <ProtectedRoute allowedRoles={['farmer']}>
+                    <FarmerInquiries />
                   </ProtectedRoute>
                 }
               />

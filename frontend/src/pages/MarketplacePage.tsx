@@ -1,30 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
-  HeartIcon,
-  StarIcon,
-  MapPinIcon,
-  UserIcon,
-  CheckBadgeIcon,
-  ShoppingCartIcon,
-  EyeIcon,
-  CurrencyRupeeIcon,
-  ScaleIcon,
-  PlusIcon,
-  MinusIcon,
 } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 import { cropApi, cartApi } from '../services/api';
 import { useCartStore } from '../stores/cartStore';
 import toast from 'react-hot-toast';
+import ProductCard from '../components/ProductCard';
 
 interface CropListing {
   id: string;
   crop_type: string;
   quantity: number;
   price_per_kg: number;
+  unit?: string; // kg, tons, quintals, etc.
   farmer_id: string;
   farmer_name: string;
   location: string;
@@ -36,6 +25,10 @@ interface CropListing {
   image?: string;
   harvestDate?: string;
   deliveryTime?: string;
+  organic?: boolean;
+  premium?: boolean;
+  discount?: number;
+  originalPrice?: number;
 }
 
 const MarketplacePage: React.FC = () => {
@@ -45,6 +38,9 @@ const MarketplacePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('featured');
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [showOnlyInStock, setShowOnlyInStock] = useState(false);
+  const [showOnlyOrganic, setShowOnlyOrganic] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isVisible, setIsVisible] = useState(false);
   const [quantities, setQuantities] = useState<{[key: string]: number}>({});
@@ -58,12 +54,17 @@ const MarketplacePage: React.FC = () => {
         // Add placeholder data for fields not in API response
         const formattedListings = response.data.map((listing: CropListing) => ({
           ...listing,
-          rating: 4.5, // Placeholder
-          reviews: Math.floor(Math.random() * 100),
-          verified: true, // Placeholder
-          image: '🌾',
-          harvestDate: '2024-01-15',
-          deliveryTime: '2-3 days',
+          rating: 4.2 + Math.random() * 0.6, // Random rating between 4.2-4.8
+          reviews: Math.floor(Math.random() * 100) + 20, // 20-120 reviews
+          verified: Math.random() > 0.2, // 80% verified
+          unit: getRandomUnit(listing.crop_type), // Assign appropriate unit
+          image: getRandomCropEmoji(listing.crop_type),
+          harvestDate: getRandomRecentDate(),
+          deliveryTime: Math.random() > 0.5 ? '2-3 days' : '1-2 days',
+          organic: Math.random() > 0.7, // 30% organic
+          premium: Math.random() > 0.8, // 20% premium
+          discount: Math.random() > 0.6 ? Math.floor(Math.random() * 25) + 5 : 0, // 40% have discount of 5-30%
+          originalPrice: Math.random() > 0.6 ? Math.floor(listing.price_per_kg * (1 + (Math.random() * 0.3 + 0.1))) : undefined,
         }));
         setListings(formattedListings);
       } catch (err) {
@@ -77,6 +78,62 @@ const MarketplacePage: React.FC = () => {
     fetchListings();
     setIsVisible(true);
   }, []);
+
+  // Helper functions for generating realistic placeholder data
+  const getRandomCropEmoji = (cropType: string) => {
+    const cropEmojis: { [key: string]: string[] } = {
+      rice: ['🌾', '🍚'],
+      wheat: ['🌾', '🍞'],
+      corn: ['🌽'],
+      tomato: ['🍅'],
+      potato: ['🥔'],
+      onion: ['🧅'],
+      apple: ['🍎', '🍏'],
+      banana: ['🍌'],
+      orange: ['🍊'],
+      mango: ['🥭'],
+      default: ['🌾', '🥕', '🍅', '🌽', '🥔', '🧅', '🍎', '🍌', '🍊']
+    };
+    
+    const lowerCropType = cropType.toLowerCase();
+    for (const [key, emojis] of Object.entries(cropEmojis)) {
+      if (lowerCropType.includes(key)) {
+        return emojis[Math.floor(Math.random() * emojis.length)];
+      }
+    }
+    return cropEmojis.default[Math.floor(Math.random() * cropEmojis.default.length)];
+  };
+
+  const getRandomRecentDate = () => {
+    const today = new Date();
+    const daysAgo = Math.floor(Math.random() * 30) + 1; // 1-30 days ago
+    const harvestDate = new Date(today.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
+    return harvestDate.toISOString().split('T')[0];
+  };
+
+  const getRandomUnit = (cropType: string) => {
+    const cropUnits: { [key: string]: string[] } = {
+      rice: ['kg', 'quintal', 'ton'],
+      wheat: ['kg', 'quintal', 'ton'],
+      corn: ['kg', 'quintal'],
+      tomato: ['kg', 'crate'],
+      potato: ['kg', 'bag'],
+      onion: ['kg', 'bag'],
+      apple: ['kg', 'box'],
+      banana: ['dozen', 'kg'],
+      orange: ['kg', 'box'],
+      mango: ['kg', 'box'],
+      default: ['kg', 'quintal']
+    };
+    
+    const lowerCropType = cropType.toLowerCase();
+    for (const [key, units] of Object.entries(cropUnits)) {
+      if (lowerCropType.includes(key)) {
+        return units[Math.floor(Math.random() * units.length)];
+      }
+    }
+    return cropUnits.default[Math.floor(Math.random() * cropUnits.default.length)];
+  };
 
   const toggleFavorite = (id: string) => {
     setFavorites(prev =>
@@ -125,23 +182,55 @@ const MarketplacePage: React.FC = () => {
 
   const categories = [
     { id: 'all', name: 'All Products' },
-    { id: 'grains', name: 'Grains & Cereals' },
-    { id: 'vegetables', name: 'Vegetables' },
-    { id: 'fruits', name: 'Fruits' },
-    { id: 'pulses', name: 'Pulses & Legumes' },
-    { id: 'spices', name: 'Spices & Herbs' },
-    { id: 'organic', name: 'Organic Products' }
+    { id: 'grains', name: 'Grains & Cereals', keywords: ['rice', 'wheat', 'corn', 'barley', 'oats', 'millet', 'sorghum', 'rye'] },
+    { id: 'vegetables', name: 'Vegetables', keywords: ['tomato', 'potato', 'onion', 'carrot', 'cabbage', 'cauliflower', 'spinach', 'brinjal', 'okra', 'peas', 'beans', 'cucumber', 'capsicum', 'chilli', 'garlic', 'ginger'] },
+    { id: 'fruits', name: 'Fruits', keywords: ['apple', 'banana', 'orange', 'mango', 'grapes', 'pomegranate', 'papaya', 'guava', 'pineapple', 'watermelon', 'melon', 'strawberry', 'coconut'] },
+    { id: 'pulses', name: 'Pulses & Legumes', keywords: ['lentil', 'chickpea', 'pea', 'bean', 'dal', 'masoor', 'chana', 'rajma', 'urad', 'moong', 'toor', 'arhar'] },
+    { id: 'spices', name: 'Spices & Herbs', keywords: ['turmeric', 'chili', 'coriander', 'cumin', 'fenugreek', 'mustard', 'cardamom', 'cinnamon', 'cloves', 'pepper', 'ginger', 'garlic', 'mint', 'basil'] },
+    { id: 'organic', name: 'Organic Products', keywords: [] } // Special case - filter by organic flag
   ];
 
   const filteredListings = listings.filter(listing => {
     const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch = listing.crop_type.toLowerCase().includes(searchTermLower) ||
-                          listing.farmer_name.toLowerCase().includes(searchTermLower) ||
-                          listing.location.toLowerCase().includes(searchTermLower);
+    const cropTypeLower = listing.crop_type.toLowerCase();
+    const farmerNameLower = listing.farmer_name.toLowerCase();
+    const locationLower = listing.location.toLowerCase();
+    
+    // Search filter - matches crop type, farmer name, or location
+    const matchesSearch = !searchTerm || 
+      cropTypeLower.includes(searchTermLower) ||
+      farmerNameLower.includes(searchTermLower) ||
+      locationLower.includes(searchTermLower);
 
-    const matchesCategory = selectedCategory === 'all' || listing.crop_type.toLowerCase().includes(selectedCategory.toLowerCase());
+    // Category filter
+    let matchesCategory = true;
+    if (selectedCategory !== 'all') {
+      const category = categories.find(cat => cat.id === selectedCategory);
+      if (category) {
+        if (selectedCategory === 'organic') {
+          // Special case for organic filter
+          matchesCategory = listing.organic === true;
+        } else if (category.keywords) {
+          // Check if crop type matches any keywords in the category
+          matchesCategory = category.keywords.some(keyword => 
+            cropTypeLower.includes(keyword.toLowerCase())
+          );
+        }
+      }
+    }
 
-    return matchesSearch && matchesCategory;
+    // Price range filter
+    const matchesPriceRange = 
+      (!priceRange.min || listing.price_per_kg >= parseFloat(priceRange.min)) &&
+      (!priceRange.max || listing.price_per_kg <= parseFloat(priceRange.max));
+
+    // Stock availability filter
+    const matchesStock = !showOnlyInStock || listing.quantity > 0;
+
+    // Organic filter (separate from category)
+    const matchesOrganicFilter = !showOnlyOrganic || listing.organic === true;
+
+    return matchesSearch && matchesCategory && matchesPriceRange && matchesStock && matchesOrganicFilter;
   });
 
   const sortedListings = [...filteredListings].sort((a, b) => {
@@ -151,7 +240,11 @@ const MarketplacePage: React.FC = () => {
       return b.price_per_kg - a.price_per_kg;
     } else if (sortBy === 'rating') {
       return (b.rating || 0) - (a.rating || 0);
+    } else if (sortBy === 'newest') {
+      // Sort by newest first (assuming more recent data appears later)
+      return b.id.localeCompare(a.id);
     }
+    // Default: featured (keep original order)
     return 0;
   });
 
@@ -188,8 +281,8 @@ const MarketplacePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col lg:flex-row gap-10">
           <div className="lg:w-1/4">
             <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-8">
               <div className="flex items-center mb-6">
@@ -210,6 +303,68 @@ const MarketplacePage: React.FC = () => {
                   ))}
                 </div>
               </div>
+              {/* Price Range Filter */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Price Range (₹)</h3>
+                <div className="flex space-x-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={priceRange.min}
+                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={priceRange.max}
+                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Additional Filters */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Filters</h3>
+                <div className="space-y-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={showOnlyInStock}
+                      onChange={(e) => setShowOnlyInStock(e.target.checked)}
+                      className="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">In Stock Only</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={showOnlyOrganic}
+                      onChange={(e) => setShowOnlyOrganic(e.target.checked)}
+                      className="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Organic Only</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              <div className="mb-6">
+                <button
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setPriceRange({ min: '', max: '' });
+                    setShowOnlyInStock(false);
+                    setShowOnlyOrganic(false);
+                    setSearchTerm('');
+                  }}
+                  className="w-full px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+
               <div>
                 <h3 className="font-semibold text-gray-900 mb-4">Sort By</h3>
                 <select
@@ -221,6 +376,7 @@ const MarketplacePage: React.FC = () => {
                   <option value="price-asc">Price: Low to High</option>
                   <option value="price-desc">Price: High to Low</option>
                   <option value="rating">Highest Rated</option>
+                  <option value="newest">Newest First</option>
                 </select>
               </div>
             </div>
@@ -232,105 +388,18 @@ const MarketplacePage: React.FC = () => {
                 {sortedListings.length} Products Found
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6">
               {sortedListings.map((listing) => (
-                <div key={listing.id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] overflow-hidden group border border-gray-100">
-                  <div className="relative h-32 bg-gradient-to-br from-emerald-50 to-blue-50 flex items-center justify-center">
-                    <div className="text-4xl">{listing.image || '🌾'}</div>
-                    <button onClick={() => toggleFavorite(listing.id)} className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full hover:bg-white transition-colors shadow-sm">
-                      {favorites.includes(listing.id) ? (
-                        <HeartSolidIcon className="h-4 w-4 text-red-500" />
-                      ) : (
-                        <HeartIcon className="h-4 w-4 text-gray-600" />
-                      )}
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-base font-semibold text-gray-800 group-hover:text-emerald-600 transition-colors truncate">
-                        {listing.crop_type}
-                      </h3>
-                      {listing.verified && (
-                        <CheckBadgeIcon className="h-4 w-4 text-blue-500 ml-1 flex-shrink-0" />
-                      )}
-                    </div>
-                    <div className="flex items-center text-gray-600 mb-2">
-                      <UserIcon className="h-3 w-3 mr-1" />
-                      <span className="text-xs truncate">{listing.farmer_name || 'Unknown Farmer'}</span>
-                    </div>
-                    <div className="flex items-center text-gray-600 mb-2">
-                      <MapPinIcon className="h-3 w-3 mr-1" />
-                      <span className="text-xs truncate">{listing.location}</span>
-                    </div>
-                    <div className="flex items-center mb-3">
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, i) => (
-                          <StarIcon key={i} className={`h-3 w-3 ${i < Math.floor(listing.rating || 0) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
-                        ))}
-                      </div>
-                      <span className="text-xs text-gray-600 ml-1">
-                        {listing.rating?.toFixed(1)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center text-lg font-bold text-emerald-600">
-                        <CurrencyRupeeIcon className="h-4 w-4" />
-                        {listing.price_per_kg}
-                        <span className="text-xs text-gray-600 ml-1">/kg</span>
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        <ScaleIcon className="h-3 w-3 inline mr-1" />
-                        {listing.quantity} kg
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {/* Compact Quantity Selector */}
-                      <div className="flex items-center justify-between bg-gray-50 rounded-lg p-2">
-                        <span className="text-xs font-medium text-gray-700">Qty:</span>
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={() => updateQuantity(listing.id, (quantities[listing.id] || 1) - 1, listing.quantity)}
-                            className="p-0.5 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
-                            disabled={(quantities[listing.id] || 1) <= 1}
-                          >
-                            <MinusIcon className="h-3 w-3 text-gray-600" />
-                          </button>
-                          <span className="w-8 text-center text-xs font-medium">{quantities[listing.id] || 1}</span>
-                          <button
-                            onClick={() => updateQuantity(listing.id, (quantities[listing.id] || 1) + 1, listing.quantity)}
-                            className="p-0.5 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
-                            disabled={(quantities[listing.id] || 1) >= listing.quantity}
-                          >
-                            <PlusIcon className="h-3 w-3 text-gray-600" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Compact Action Buttons */}
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleAddToCart(listing)}
-                          className="flex-1 bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center relative"
-                        >
-                          <ShoppingCartIcon className="h-3 w-3 mr-1" />
-                          Add
-                          {getItemCount(listing.id) > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                              {getItemCount(listing.id)}
-                            </span>
-                          )}
-                        </button>
-                        <Link
-                          to={`/marketplace/${listing.id}`}
-                          className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"
-                          title="View Details"
-                        >
-                          <EyeIcon className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <ProductCard
+                  key={listing.id}
+                  listing={listing}
+                  quantity={quantities[listing.id] || 1}
+                  isFavorite={favorites.includes(listing.id)}
+                  itemCount={getItemCount(listing.id)}
+                  onToggleFavorite={() => toggleFavorite(listing.id)}
+                  onUpdateQuantity={(newQuantity) => updateQuantity(listing.id, newQuantity, listing.quantity)}
+                  onAddToCart={() => handleAddToCart(listing)}
+                />
               ))}
             </div>
           </div>
