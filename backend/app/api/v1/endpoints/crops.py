@@ -3,13 +3,13 @@ Crop management endpoints for GrainChain
 Handles crop listings, marketplace, and crop-related operations
 """
 
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import List, Optional, Dict, Any
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from bson import ObjectId
 
 from ....api.deps import get_current_user
@@ -19,6 +19,34 @@ from ....core.database import get_db, get_collection
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Models for inquiries
+class InquiryBase(BaseModel):
+    buyer_id: str
+    buyer_name: str
+    listing_id: str
+    crop_type: str
+    quantity: float
+    message: str
+    status: str = "pending"  # pending, accepted, rejected
+    price_per_kg: Optional[float] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class InquiryCreate(InquiryBase):
+    pass
+
+class InquiryResponse(InquiryBase):
+    id: str
+    
+    class Config:
+        json_encoders = {
+            ObjectId: str,
+            datetime: lambda dt: dt.isoformat()
+        }
+
+class InquiryUpdate(BaseModel):
+    status: str
 
 # Basic crop models for now
 class CropListingResponse(BaseModel):
@@ -30,13 +58,17 @@ class CropListingResponse(BaseModel):
     farmer_name: str
     location: str
     status: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 class CropCreateRequest(BaseModel):
     crop_type: str
-    quantity: float
-    price_per_kg: float
+    quantity: float = Field(..., gt=0, description="Quantity must be greater than 0")
+    price_per_kg: float = Field(..., gt=0, description="Price per kg must be greater than 0")
     location: str
     description: Optional[str] = None
+    images: Optional[List[str]] = None
+    harvest_date: Optional[datetime] = None
 
 
 @router.get("/listings", response_model=List[CropListingResponse])
@@ -176,21 +208,59 @@ async def get_crop_listing(
     try:
         # Query database for the specific listing
         listings_collection = get_collection("crop_listings")
-        listing_doc = await listings_collection.find_one({"_id": ObjectId(listing_id)})
+        
+        # Try to find by ObjectId first
+        try:
+            from bson.errors import InvalidId
+            listing_doc = await listings_collection.find_one({"_id": ObjectId(listing_id)})
+        except (InvalidId, TypeError):
+            # If not a valid ObjectId, try finding by string ID
+            listing_doc = await listings_collection.find_one({"id": listing_id})
+            
+            # If still not found, try case-insensitive search
+            if not listing_doc:
+                listing_doc = await listings_collection.find_one(
+                    {"$or": [
+                        {"id": {"$regex": f"^{listing_id}$", "$options": "i"}},
+                        {"crop_type": {"$regex": f"^{listing_id}$", "$options": "i"}}
+                    ]}
+                )
         
         if not listing_doc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Crop listing not found")
+            # Log the error for debugging
+            logger.error(f"Crop listing not found with ID: {listing_id}")
+            # Try to find any listing to check if the collection is accessible
+            count = await listings_collection.count_documents({})
+            logger.info(f"Total listings in collection: {count}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"Crop listing not found with ID: {listing_id}"
+            )
         
-        # Convert ObjectId to string for the response
-        listing_doc["id"] = str(listing_doc.pop("_id"))
+        # Convert ObjectId to string for the response if it exists
+        if "_id" in listing_doc:
+            listing_doc["id"] = str(listing_doc.pop("_id"))
+        
+        # Ensure all required fields exist with defaults
+        if "price_per_kg" not in listing_doc:
+            listing_doc["price_per_kg"] = listing_doc.get("price_per_unit", 0.0)
+        if "farmer_name" not in listing_doc:
+            listing_doc["farmer_name"] = "Unknown Farmer"
+        if "location" not in listing_doc:
+            listing_doc["location"] = "Unknown Location"
+        if "status" not in listing_doc:
+            listing_doc["status"] = "available"
         
         return CropListingResponse(**listing_doc)
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting crop listing: {e}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Crop listing not found")
+        logger.error(f"Error getting crop listing {listing_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Error retrieving crop listing: {str(e)}"
+        )
 
 
 @router.get("/marketplace", response_model=List[CropListingResponse])
@@ -256,7 +326,7 @@ async def get_my_listings(
             if "price_per_kg" not in doc:
                 doc["price_per_kg"] = doc.get("price_per_unit", 0.0)
             if "farmer_name" not in doc:
-                doc["farmer_name"] = "Unknown Farmer"
+                doc["farmer_name"] = current_user.full_name or "Unknown Farmer"
             if "location" not in doc:
                 doc["location"] = "Unknown Location"
             if "status" not in doc:
@@ -271,3 +341,148 @@ async def get_my_listings(
     except Exception as e:
         logger.error(f"Error getting my listings for farmer {current_user.id}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+# Inquiry Endpoints
+@router.get("/inquiries", response_model=List[InquiryResponse])
+async def get_farmer_inquiries(
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all inquiries for the current farmer's listings"""
+    try:
+        if current_user.role != "farmer":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only farmers can view inquiries"
+            )
+
+        inquiries_collection = get_collection("inquiries")
+        
+        # Build query to find inquiries for this farmer's listings
+        query: Dict[str, Any] = {
+            "farmer_id": str(current_user.id)
+        }
+        
+        if status:
+            query["status"] = status
+            
+        cursor = inquiries_collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        
+        inquiries = []
+        async for doc in cursor:
+            doc["id"] = str(doc.pop("_id"))
+            inquiries.append(InquiryResponse(**doc))
+            
+        return inquiries
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting inquiries for farmer {current_user.id}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch inquiries")
+
+
+@router.get("/inquiries/{inquiry_id}", response_model=InquiryResponse)
+async def get_inquiry(
+    inquiry_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get a specific inquiry by ID"""
+    try:
+        inquiries_collection = get_collection("inquiries")
+        
+        # Find the inquiry
+        inquiry = await inquiries_collection.find_one({"_id": ObjectId(inquiry_id)})
+        if not inquiry:
+            raise HTTPException(status_code=404, detail="Inquiry not found")
+            
+        # Verify the current user is the farmer who owns the listing
+        if inquiry["farmer_id"] != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this inquiry"
+            )
+            
+        inquiry["id"] = str(inquiry.pop("_id"))
+        return InquiryResponse(**inquiry)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting inquiry {inquiry_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch inquiry")
+
+
+@router.put("/inquiries/{inquiry_id}/respond", response_model=InquiryResponse)
+async def respond_to_inquiry(
+    inquiry_id: str,
+    inquiry_update: InquiryUpdate,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update the status of an inquiry (accept/reject)"""
+    try:
+        if current_user.role != "farmer":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only farmers can respond to inquiries"
+            )
+            
+        if inquiry_update.status not in ["accepted", "rejected"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Status must be either 'accepted' or 'rejected'"
+            )
+            
+        inquiries_collection = get_collection("inquiries")
+        
+        # Find the inquiry
+        inquiry = await inquiries_collection.find_one({"_id": ObjectId(inquiry_id)})
+        if not inquiry:
+            raise HTTPException(status_code=404, detail="Inquiry not found")
+            
+        # Verify the current user is the farmer who owns the listing
+        if inquiry["farmer_id"] != str(current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to respond to this inquiry"
+            )
+            
+        # Update the inquiry
+        update_data = {
+            "status": inquiry_update.status,
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        result = await inquiries_collection.update_one(
+            {"_id": ObjectId(inquiry_id)},
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=500, detail="Failed to update inquiry")
+            
+        # Get the updated inquiry
+        updated_inquiry = await inquiries_collection.find_one({"_id": ObjectId(inquiry_id)})
+        updated_inquiry["id"] = str(updated_inquiry.pop("_id"))
+        
+        # If inquiry is accepted, mark the listing as sold or update its status
+        if inquiry_update.status == "accepted":
+            listings_collection = get_collection("crop_listings")
+            await listings_collection.update_one(
+                {"_id": ObjectId(inquiry["listing_id"])},
+                {"$set": {"status": "sold"}}
+            )
+        
+        return InquiryResponse(**updated_inquiry)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error responding to inquiry {inquiry_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update inquiry")
