@@ -189,9 +189,10 @@ export const buyerApi = {
   getAnalytics: (period?: string) => api.get('/buyer/analytics', { params: { period } }),
   getFarmers: (params?: any) => api.get('/buyer/farmers', { params }),
   getListings: (params?: any) => api.get('/buyer/listings', { params }),
-  getInquiries: (params?: any) => api.get('/buyer/inquiries', { params }),
   
   // Inquiry management
+  getInquiries: (params?: any) => api.get('/inquiries', { params }),
+  
   createInquiry: (data: {
     listing_id: string;
     quantity_requested: number;
@@ -199,7 +200,7 @@ export const buyerApi = {
     message?: string;
     delivery_location?: string;
     preferred_delivery_date?: string;
-  }) => api.post('/buyer/inquiries', data),
+  }) => api.post('/inquiries', data),
   
   updateInquiry: (inquiryId: string, data: {
     quantity_requested?: number;
@@ -238,6 +239,33 @@ export const financierApi = {
   }) => api.post(`/finance/loan-applications/${id}/review`, data),
   
   disburseApplication: (id: string) => api.post(`/finance/loan-applications/${id}/disburse`),
+  
+  postInquiry: (data: {
+    listing_id: string;
+    quantity_requested: number;
+    proposed_price: number;
+    message?: string;
+    delivery_location?: string;
+    preferred_delivery_date?: string;
+  }) => api.post('/finance/financier/inquiries', data),
+  
+  getInquiries: (params?: {
+    status?: string;
+    limit?: number;
+    skip?: number;
+  }) => api.get('/finance/financier/inquiries', { params }),
+  
+  getInquiry: (inquiryId: string) => api.get(`/finance/financier/inquiries/${inquiryId}`),
+  
+  updateInquiry: (inquiryId: string, data: {
+    quantity_requested?: number;
+    proposed_price?: number;
+    message?: string;
+    delivery_location?: string;
+    preferred_delivery_date?: string;
+  }) => api.put(`/finance/financier/inquiries/${inquiryId}`, data),
+  
+  cancelInquiry: (inquiryId: string) => api.delete(`/finance/financier/inquiries/${inquiryId}`),
   
   // Loan products
   getLoanProducts: () => api.get('/finance/products'),

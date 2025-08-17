@@ -72,28 +72,82 @@ export const BuyerDashboard: React.FC = () => {
         console.log('Listings response:', listingsResponse);
         console.log('Listings data:', listingsResponse.data);
         
-        // If listings work, try the other endpoints
-        const [statsResponse, inquiriesResponse] = await Promise.all([
-          buyerApi.getDashboardStats(),
-          buyerApi.getInquiries({ limit: 3 })
-        ]);
+        // Fetch dashboard stats
+        const statsResponse = await buyerApi.getDashboardStats().catch(() => ({
+          data: {
+            active_orders: 0,
+            total_procurement: 0,
+            pending_deliveries: 0,
+            active_farmers: 0
+          }
+        }));
+        
+        // Fetch inquiries from the API
+        let inquiriesResponse: Inquiry[] = [];
+        try {
+          console.log('Fetching inquiries...');
+          const response = await buyerApi.getInquiries({ 
+            limit: 5, 
+            sort_by: 'created_at', 
+            sort_order: 'desc' 
+          });
+          
+          console.log('Inquiries API response:', response);
+          
+          if (response?.data && Array.isArray(response.data)) {
+            console.log(`Received ${response.data.length} inquiries`);
+            inquiriesResponse = response.data.map((inquiry: any) => {
+              console.log('Processing inquiry:', inquiry);
+              return {
+                _id: inquiry.id || inquiry._id, // Handle both formats
+                listing_id: inquiry.listing_id,
+                quantity_requested: inquiry.quantity || inquiry.quantity_requested,
+                proposed_price: inquiry.proposed_price || 0,
+                status: inquiry.status || 'pending',
+                created_at: inquiry.created_at,
+                listing: {
+                  crop_name: inquiry.listing?.crop_name || 'Unknown Crop',
+                  farmer: {
+                    full_name: inquiry.buyer_name || 'Unknown Farmer'
+                  }
+                }
+              };
+            });
+          } else {
+            console.warn('Unexpected API response format:', response);
+          }
+          
+          console.log('Transformed inquiries:', inquiriesResponse);
+        } catch (err) {
+          console.error('Error fetching inquiries:', err);
+        }
         
         console.log('Stats response:', statsResponse.data);
-        console.log('Inquiries response:', inquiriesResponse.data);
         
-        setStats(statsResponse.data);
-        setListings(listingsResponse.data || []);
-        setRecentInquiries(inquiriesResponse.data || []);
+        // Set stats with fallback
+        setStats({
+          active_orders: statsResponse.data?.active_orders || 0,
+          total_procurement: statsResponse.data?.total_procurement || 0,
+          pending_deliveries: statsResponse.data?.pending_deliveries || 0,
+          active_farmers: statsResponse.data?.active_farmers || 0
+        });
+        
+        // Set listings with fallback
+        setListings(Array.isArray(listingsResponse?.data) ? listingsResponse.data : []);
+        
+        // Set inquiries from API response
+        setRecentInquiries(Array.isArray(inquiriesResponse) ? inquiriesResponse : []);
         
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data. Some features may be limited.');
         
         // Try fallback to get listings from marketplace API
         try {
           console.log('Trying fallback marketplace listings...');
           const marketplaceResponse = await cropApi.getMarketplaceListings(3);
           console.log('Marketplace fallback response:', marketplaceResponse);
-          setListings(marketplaceResponse.data || []);
+          setListings(Array.isArray(marketplaceResponse?.data) ? marketplaceResponse.data : []);
         } catch (fallbackErr) {
           console.error('Fallback also failed:', fallbackErr);
           setError('Failed to load dashboard data');
@@ -264,6 +318,11 @@ export const BuyerDashboard: React.FC = () => {
                     View all
                   </Link>
                 </div>
+                {error && (
+                  <div className="mb-4 p-3 bg-yellow-50 text-yellow-800 text-sm rounded-md">
+                    {error}
+                  </div>
+                )}
                 <div className="space-y-4">
                   {listings.map((listing) => (
                     <div
@@ -294,10 +353,10 @@ export const BuyerDashboard: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-lg font-semibold text-gray-900">
-                                ₹{listing.price_per_unit.toLocaleString()}/unit
+                                ₹{Number(listing.price_per_unit || 0).toLocaleString()}/unit
                               </p>
                               <p className="text-sm text-gray-500">
-                                {listing.quantity_available} units available
+                                {Number(listing.quantity_available || 0).toLocaleString()} units available
                               </p>
                             </div>
                             <div className="flex space-x-2">

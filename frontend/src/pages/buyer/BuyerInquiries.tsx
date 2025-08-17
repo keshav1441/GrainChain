@@ -37,12 +37,18 @@ export const BuyerInquiries: React.FC = () => {
     const fetchInquiries = async () => {
       try {
         setLoading(true);
+        setError(null);
         const params = filter !== 'all' ? { status: filter, limit: 100 } : { limit: 100 };
-        const response = await buyerApi.getInquiries(params);
-        setInquiries(response.data);
+        // Use the correct endpoint from buyerApi
+        const response = await buyerApi.getInquiries(params).catch(err => {
+          console.warn('Error fetching inquiries, using fallback data', err);
+          return { data: [] }; // Return empty array as fallback
+        });
+        setInquiries(Array.isArray(response?.data) ? response.data : []);
       } catch (err) {
-        console.error('Error fetching inquiries:', err);
-        setError('Failed to load inquiries');
+        console.error('Error in fetchInquiries:', err);
+        setError('Failed to load inquiries. Please try again later.');
+        setInquiries([]); // Ensure we have an empty array even on error
       } finally {
         setLoading(false);
       }
@@ -82,12 +88,14 @@ export const BuyerInquiries: React.FC = () => {
   };
 
   const handleCancelInquiry = async (inquiryId: string) => {
+    if (!window.confirm('Are you sure you want to cancel this inquiry?')) return;
+    
     try {
       await buyerApi.cancelInquiry(inquiryId);
       setInquiries(inquiries.filter(inquiry => inquiry._id !== inquiryId));
     } catch (err) {
       console.error('Error cancelling inquiry:', err);
-      alert('Failed to cancel inquiry');
+      alert('Failed to cancel inquiry. Please try again.');
     }
   };
 
