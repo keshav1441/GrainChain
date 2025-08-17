@@ -11,10 +11,6 @@ import {LoginPage} from './pages/auth/LoginPage';
 import {RegisterPage} from './pages/auth/RegisterPage';
 import {FarmerDashboard} from './pages/farmer/FarmerDashboard';
 import {BuyerDashboard} from './pages/buyer/BuyerDashboard';
-import {BuyerFarmers} from './pages/buyer/BuyerFarmers';
-import {BuyerInquiries} from './pages/buyer/BuyerInquiries';
-import {EditInquiry} from './pages/buyer/EditInquiry';
-import {BuyerAnalytics} from './pages/buyer/BuyerAnalytics';
 import {FinancierDashboard} from './pages/financier/FinancierDashboard';
 import {MarketplacePage} from './pages/MarketplacePage';
 import {ApplicationDetails} from './pages/financier/ApplicationDetails';
@@ -43,6 +39,12 @@ import {FarmerAnalytics} from './pages/farmer/FarmerAnalytics';
 import {FarmerFinance} from './pages/farmer/FarmerFinance';
 import {FarmerProfile} from './pages/farmer/FarmerProfile';
 import FarmerInquiries from './pages/farmer/FarmerInquiries';
+
+// Import buyer components
+import {BuyerFarmers} from './pages/buyer/BuyerFarmers';
+import {BuyerInquiries} from './pages/buyer/BuyerInquiries';
+import {BuyerAnalytics} from './pages/buyer/BuyerAnalytics';
+import {EditInquiry} from './pages/buyer/EditInquiry';
 
 
 // Import financier components

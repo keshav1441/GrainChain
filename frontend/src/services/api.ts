@@ -350,10 +350,31 @@ export const paymentApi = {
   initiateCardPayment: (data: {
     order_id: string;
     card_type?: 'visa' | 'mastercard' | 'rupay' | 'amex';
+    card_type?: 'visa' | 'mastercard' | 'rupay' | 'amex';
     card_number?: string;
     card_holder_name?: string;
     expiry_month?: string;
     expiry_year?: string;
+    cvv?: string;
+  }) => api.post('/payments/card/initiate', data),
+
+  verifyCardPayment: (data: {
+    payment_id: string;
+    gateway_payment_id?: string;
+    gateway_signature?: string;
+    auth_code?: string;
+  }) => api.post('/payments/card/verify', data),
+
+  // Net Banking endpoints
+  initiateNetBankingPayment: (data: {
+    order_id: string;
+    bank_code: 'sbi' | 'hdfc' | 'icici' | 'axis' | 'kotak' | 'pnb';
+    account_holder_name?: string;
+  }) => api.post('/payments/netbanking/initiate', data),
+
+  verifyNetBankingPayment: (data: {
+    payment_id: string;
+    bank_transaction_id?: string;
     cvv?: string;
   }) => api.post('/payments/card/initiate', data),
 
