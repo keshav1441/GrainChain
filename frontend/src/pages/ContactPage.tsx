@@ -10,7 +10,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 
-const ContactPage: React.FC = () => {
+export const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',

@@ -131,8 +131,8 @@ async def search_crop_listings(
     city: Optional[str] = Query(None, description="Filter by farmer's city"),
     
     # Price filters
-    min_price: Optional[float] = Query(None, description="Minimum price per unit"),
-    max_price: Optional[float] = Query(None, description="Maximum price per unit"),
+    min_price: Optional[float] = Query(None, description="Minimum price per kg"),
+    max_price: Optional[float] = Query(None, description="Maximum price per kg"),
     
     # Quantity filters
     min_quantity: Optional[float] = Query(None, description="Minimum available quantity"),
@@ -143,7 +143,7 @@ async def search_crop_listings(
     limit: int = Query(20, ge=1, le=100, description="Number of records to return"),
     
     # Sorting
-    sort_by: str = Query("created_at", description="Sort field: created_at, price_per_unit, quantity_available"),
+    sort_by: str = Query("created_at", description="Sort field: created_at, price_per_kg, quantity_available"),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
     
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -170,7 +170,7 @@ async def search_crop_listings(
             price_filter["$gte"] = min_price
         if max_price is not None:
             price_filter["$lte"] = max_price
-        query["price_per_unit"] = price_filter
+        query["price_per_kg"] = price_filter
     
     # Quantity range filter
     if min_quantity is not None or max_quantity is not None:
@@ -208,7 +208,7 @@ async def search_crop_listings(
     
     # Add sorting
     sort_direction = 1 if sort_order.lower() == "asc" else -1
-    valid_sort_fields = ["created_at", "price_per_unit", "quantity_available", "updated_at"]
+    valid_sort_fields = ["created_at", "price_per_kg", "quantity_available", "updated_at"]
     if sort_by not in valid_sort_fields:
         sort_by = "created_at"
     

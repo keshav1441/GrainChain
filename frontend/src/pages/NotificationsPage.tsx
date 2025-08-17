@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useNotificationStore, Notification } from '../stores/notificationStore';
 
-const NotificationsPage: React.FC = () => {
+export const NotificationsPage: React.FC = () => {
   const {
     notifications,
     unreadCount,

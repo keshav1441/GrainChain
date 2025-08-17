@@ -315,11 +315,16 @@ export const cartApi = {
   clearCart: () => api.delete('/cart/clear'),
   
   // Order management
+  // Backend expects OrderCreate schema
+  // {
+  //   items: { crop_listing_id: string; quantity: number }[];
+  //   delivery_address: { name: string; phone: string; address: string; city: string; state: string; pincode: string; landmark?: string };
+  //   payment_method: 'upi' | 'card' | 'netbanking' | 'wallet' | 'cod';
+  //   order_notes?: string;
+  //   special_instructions?: string;
+  // }
   createOrder: (data: {
-    items: Array<{
-      crop_listing_id: string;
-      quantity: number;
-    }>;
+    items: { crop_listing_id: string; quantity: number }[];
     delivery_address: {
       name: string;
       phone: string;
@@ -329,7 +334,7 @@ export const cartApi = {
       pincode: string;
       landmark?: string;
     };
-    payment_method: string;
+    payment_method: 'upi' | 'card' | 'netbanking' | 'wallet' | 'cod';
     order_notes?: string;
     special_instructions?: string;
   }) => api.post('/orders', data),
@@ -355,7 +360,78 @@ export const paymentApi = {
     payment_method: string;
     gateway_name?: string;
   }) => api.post('/payments/create', data),
+
+  // UPI specific endpoints
+  initiateUPIPayment: (data: {
+    order_id: string;
+    upi_id?: string;
+    upi_provider?: string;
+  }) => api.post('/payments/upi/initiate', data),
+
+  verifyUPIPayment: (data: {
+    payment_id: string;
+    upi_transaction_id?: string;
+    upi_ref_id?: string;
+  }) => api.post('/payments/upi/verify', data),
+
+  // Card endpoints (covers both debit and credit)
+  initiateCardPayment: (data: {
+    order_id: string;
+    card_type?: 'visa' | 'mastercard' | 'rupay' | 'amex';
+    card_type?: 'visa' | 'mastercard' | 'rupay' | 'amex';
+    card_number?: string;
+    card_holder_name?: string;
+    expiry_month?: string;
+    expiry_year?: string;
+    cvv?: string;
+  }) => api.post('/payments/card/initiate', data),
+
+  verifyCardPayment: (data: {
+    payment_id: string;
+    gateway_payment_id?: string;
+    gateway_signature?: string;
+    auth_code?: string;
+  }) => api.post('/payments/card/verify', data),
+
+  // Net Banking endpoints
+  initiateNetBankingPayment: (data: {
+    order_id: string;
+    bank_code: 'sbi' | 'hdfc' | 'icici' | 'axis' | 'kotak' | 'pnb';
+    account_holder_name?: string;
+  }) => api.post('/payments/netbanking/initiate', data),
+
+  verifyNetBankingPayment: (data: {
+    payment_id: string;
+    bank_transaction_id?: string;
+    cvv?: string;
+  }) => api.post('/payments/card/initiate', data),
+
+  verifyCardPayment: (data: {
+    payment_id: string;
+    gateway_payment_id?: string;
+    gateway_signature?: string;
+    auth_code?: string;
+  }) => api.post('/payments/card/verify', data),
+
+  // Net Banking endpoints
+  initiateNetBankingPayment: (data: {
+    order_id: string;
+    bank_code: 'sbi' | 'hdfc' | 'icici' | 'axis' | 'kotak' | 'pnb';
+    account_holder_name?: string;
+  }) => api.post('/payments/netbanking/initiate', data),
+
+  verifyNetBankingPayment: (data: {
+    payment_id: string;
+    bank_transaction_id?: string;
+    bank_ref_id?: string;
+  }) => api.post('/payments/netbanking/verify', data),
+
+  // Payment gateway and method info
+  getAvailableGateways: () => api.get('/payments/gateways'),
   
+  getPaymentMethods: () => api.get('/payments/methods'),
+
+  // Payment verification and status
   verifyPayment: (data: {
     payment_id: string;
     gateway_payment_id: string;

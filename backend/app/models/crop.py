@@ -44,7 +44,7 @@ class CropListing(BaseModel):
     variety: Optional[str] = None
     quantity_available: float  # in kg or tons
     unit: str = "kg"  # kg, tons, quintals
-    price_per_unit: float  # per ton
+    price_per_kg: float  # per kg
     min_order_quantity: Optional[float] = None
     
     # Harvest details
@@ -55,7 +55,7 @@ class CropListing(BaseModel):
     expiry_date: Optional[datetime] = None
     
     # Pricing
-    price_per_unit: float
+    price_per_kg: float
     currency: str = "INR"
     price_negotiable: bool = True
     

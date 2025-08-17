@@ -17,7 +17,7 @@ interface InquiryData {
   created_at: string;
   listing?: {
     crop_name: string;
-    price_per_unit: number;
+    price_per_kg: number;
     quantity_available: number;
     farmer?: {
       full_name: string;
@@ -292,7 +292,7 @@ export const EditInquiry: React.FC = () => {
                 )}
                 {inquiry.listing && (
                   <p className="mt-1 text-sm text-gray-500">
-                    Current price: ₹{inquiry.listing.price_per_unit}/unit
+                    Current price: ₹{inquiry.listing.price_per_kg}/unit
                   </p>
                 )}
               </div>

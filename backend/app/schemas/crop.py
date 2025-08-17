@@ -10,7 +10,7 @@ class CropListingBase(BaseModel):
     variety: Optional[str] = None
     quantity_available: float
     unit: str = "kg"
-    price_per_unit: float
+    price_per_kg: float
     min_order_quantity: Optional[float] = None
     grade: Optional[CropGrade] = None
     harvest_date: Optional[datetime] = None
@@ -29,7 +29,7 @@ class CropListingUpdate(BaseModel):
     variety: Optional[str] = None
     quantity_available: Optional[float] = None
     unit: Optional[str] = None
-    price_per_unit: Optional[float] = None
+    price_per_kg: Optional[float] = None
     min_order_quantity: Optional[float] = None
     grade: Optional[CropGrade] = None
     harvest_date: Optional[datetime] = None

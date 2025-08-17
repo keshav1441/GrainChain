@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import google.generativeai as genai
 from app.core.config import settings
+from app.ml.models import price_model, credit_model
 
 class GeminiAIService:
     """AI service using Google's Gemini API for agricultural intelligence"""
@@ -15,57 +16,61 @@ class GeminiAIService:
         self.model = genai.GenerativeModel(settings.GEMINI_MODEL)
         
     async def predict_crop_price(self, crop_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Predict crop prices using AI analysis"""
-        
-        prompt = f"""
-        As an agricultural market analyst, predict the price for the following crop:
-        
-        Crop Type: {crop_data.get('crop_type')}
-        Quantity: {crop_data.get('quantity')} kg
-        Location: {crop_data.get('location')}
-        Quality Grade: {crop_data.get('quality_grade')}
-        Current Season: {datetime.now().strftime('%B %Y')}
-        
-        Consider factors like:
-        - Seasonal demand patterns
-        - Regional market conditions
-        - Quality grade impact
-        - Supply chain factors
-        - Historical price trends
-        
-        Provide a JSON response with:
-        - predicted_price: price per kg in INR
-        - price_range: {{"min": number, "max": number}}
-        - confidence_score: 0-100
-        - market_trend: "bullish"/"bearish"/"stable"
-        - recommendation: brief recommendation
-        - factors: list of key factors affecting price
-        
-        Only return valid JSON, no additional text.
-        """
+        """Predict crop prices using ML model with Gemini AI enhancement"""
         
         try:
-            response = self.model.generate_content(prompt)
-            result = json.loads(response.text.strip())
+            # First, get ML model prediction
+            ml_prediction = price_model.predict(crop_data)
             
-            # Validate and ensure all required fields
-            return {
-                "predicted_price": result.get("predicted_price", 0),
-                "price_range": result.get("price_range", {"min": 0, "max": 0}),
-                "confidence_score": min(100, max(0, result.get("confidence_score", 75))),
-                "market_trend": result.get("market_trend", "stable"),
-                "recommendation": result.get("recommendation", "Monitor market conditions"),
-                "factors": result.get("factors", ["Market demand", "Seasonal patterns"])
-            }
+            # Try to enhance with Gemini AI insights
+            try:
+                prompt = f"""
+                Enhance this crop price prediction with current market insights:
+                
+                Crop: {crop_data.get('crop_type')}
+                ML Predicted Price: ₹{ml_prediction['predicted_price']}/kg
+                Location: {crop_data.get('location')}
+                Quantity: {crop_data.get('quantity')} kg
+                
+                Provide brief market insights and validate the prediction.
+                Return JSON with:
+                - market_insights: brief current market analysis
+                - price_adjustment: percentage adjustment (-20 to +20)
+                - confidence_boost: additional confidence (0-10)
+                
+                Only return valid JSON.
+                """
+                
+                response = self.model.generate_content(prompt)
+                ai_enhancement = json.loads(response.text.strip())
+                
+                # Apply AI enhancement
+                price_adjustment = ai_enhancement.get("price_adjustment", 0) / 100
+                adjusted_price = ml_prediction["predicted_price"] * (1 + price_adjustment)
+                confidence_boost = ai_enhancement.get("confidence_boost", 0)
+                
+                # Update prediction with AI insights
+                ml_prediction["predicted_price"] = round(adjusted_price, 2)
+                ml_prediction["price_range"]["min"] = round(adjusted_price * 0.85, 2)
+                ml_prediction["price_range"]["max"] = round(adjusted_price * 1.15, 2)
+                ml_prediction["confidence_score"] = min(100, ml_prediction["confidence_score"] + confidence_boost)
+                ml_prediction["factors"].append(f"AI Market Analysis: {ai_enhancement.get('market_insights', 'Current market conditions considered')}")
+                
+            except Exception as ai_error:
+                # If AI enhancement fails, use ML prediction as-is
+                pass
+            
+            return ml_prediction
+            
         except Exception as e:
-            # Fallback response if AI fails
+            # Complete fallback
             base_price = self._get_base_price(crop_data.get('crop_type', 'wheat'))
             return {
                 "predicted_price": base_price,
                 "price_range": {"min": base_price * 0.9, "max": base_price * 1.1},
                 "confidence_score": 60,
                 "market_trend": "stable",
-                "recommendation": "AI analysis unavailable, using historical averages",
+                "recommendation": "Using fallback prediction",
                 "factors": ["Historical data", "Market averages"]
             }
     
@@ -220,50 +225,77 @@ class GeminiAIService:
             }
     
     async def assess_credit_score(self, farmer_data: Dict[str, Any]) -> Dict[str, Any]:
-        """AI-powered loan risk assessment"""
-        
-        prompt = f"""
-        Assess credit score for a farmer with the following profile:
-        
-        Name: {farmer_data.get('name', 'Not specified')}
-        Farm Size: {farmer_data.get('farm_size', 'Not specified')} acres
-        Location: {farmer_data.get('location', 'India')}
-        Farming Experience: {farmer_data.get('years_farming', 'Not specified')} years
-        Annual Income: ₹{farmer_data.get('annual_income', 'Not specified')}
-        Crop Types: {farmer_data.get('crop_types', 'Mixed farming')}
-        Previous Loan History: {farmer_data.get('loan_history', 'No previous loans')}
-        
-        Analyze and provide JSON response with:
-        - credit_score: 300-850 (standard credit score range)
-        - score_category: "poor"/"fair"/"good"/"very_good"/"excellent"
-        - risk_level: "low"/"medium"/"high"
-        - factors_affecting_score: list of positive and negative factors
-        - improvement_suggestions: list of suggestions to improve score
-        - loan_eligibility: "high"/"medium"/"low"
-        - recommended_loan_amount: suggested maximum loan amount
-        
-        Only return valid JSON.
-        """
+        """AI-powered credit score assessment using ML model with Gemini enhancement"""
         
         try:
-            response = self.model.generate_content(prompt)
-            result = json.loads(response.text.strip())
+            # First, get ML model prediction
+            ml_assessment = credit_model.predict(farmer_data)
             
-            return {
-                "credit_score": min(850, max(300, result.get("credit_score", 650))),
-                "score_category": result.get("score_category", "fair"),
-                "risk_level": result.get("risk_level", "medium"),
-                "factors_affecting_score": result.get("factors_affecting_score", ["Standard agricultural factors"]),
-                "improvement_suggestions": result.get("improvement_suggestions", ["Maintain regular income", "Build credit history"]),
-                "loan_eligibility": result.get("loan_eligibility", "medium"),
-                "recommended_loan_amount": result.get("recommended_loan_amount", 100000)
-            }
+            # Try to enhance with Gemini AI insights
+            try:
+                prompt = f"""
+                Enhance this credit assessment with additional insights:
+                
+                Farmer: {farmer_data.get('name', 'Farmer')}
+                ML Credit Score: {ml_assessment['credit_score']}
+                Farm Size: {farmer_data.get('farm_size')} acres
+                Experience: {farmer_data.get('years_farming')} years
+                Income: ₹{farmer_data.get('annual_income')}
+                
+                Provide additional risk factors and suggestions.
+                Return JSON with:
+                - additional_factors: list of 1-2 additional considerations
+                - risk_mitigation: list of 1-2 risk mitigation strategies
+                - score_adjustment: small adjustment (-20 to +20)
+                
+                Only return valid JSON.
+                """
+                
+                response = self.model.generate_content(prompt)
+                ai_enhancement = json.loads(response.text.strip())
+                
+                # Apply AI enhancement
+                score_adjustment = ai_enhancement.get("score_adjustment", 0)
+                enhanced_score = max(300, min(850, ml_assessment["credit_score"] + score_adjustment))
+                
+                # Add AI insights
+                ml_assessment["credit_score"] = enhanced_score
+                ml_assessment["factors_affecting_score"].extend(
+                    ai_enhancement.get("additional_factors", [])
+                )
+                ml_assessment["improvement_suggestions"].extend(
+                    ai_enhancement.get("risk_mitigation", [])
+                )
+                
+                # Update category if score changed significantly
+                if enhanced_score >= 750:
+                    ml_assessment["score_category"] = "excellent"
+                    ml_assessment["risk_level"] = "low"
+                elif enhanced_score >= 700:
+                    ml_assessment["score_category"] = "very_good"
+                    ml_assessment["risk_level"] = "low"
+                elif enhanced_score >= 650:
+                    ml_assessment["score_category"] = "good"
+                    ml_assessment["risk_level"] = "medium"
+                elif enhanced_score >= 600:
+                    ml_assessment["score_category"] = "fair"
+                    ml_assessment["risk_level"] = "medium"
+                else:
+                    ml_assessment["score_category"] = "poor"
+                    ml_assessment["risk_level"] = "high"
+                
+            except Exception as ai_error:
+                # If AI enhancement fails, use ML assessment as-is
+                pass
+            
+            return ml_assessment
+            
         except Exception as e:
             return {
                 "credit_score": 650,
                 "score_category": "fair",
                 "risk_level": "medium",
-                "factors_affecting_score": ["AI assessment unavailable"],
+                "factors_affecting_score": ["Assessment unavailable"],
                 "improvement_suggestions": ["Manual review required"],
                 "loan_eligibility": "medium",
                 "recommended_loan_amount": 100000

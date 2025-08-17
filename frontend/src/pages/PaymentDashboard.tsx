@@ -27,7 +27,7 @@ interface QuickPayment {
   paymentType: string;
 }
 
-const PaymentDashboard: React.FC = () => {
+export const PaymentDashboard: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<QuickPayment | null>(null);
   const [stats, setStats] = useState<PaymentStats>({

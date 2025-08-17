@@ -38,7 +38,7 @@ class Transaction(BaseModel):
     
     # Transaction details
     quantity: float
-    price_per_unit: float
+    price_per_kg: float
     total_amount: float
     platform_commission: float = 0.0
     net_farmer_amount: float

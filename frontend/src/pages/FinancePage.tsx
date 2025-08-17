@@ -37,7 +37,7 @@ interface FinancialService {
   cta: string;
 }
 
-const FinancePage: React.FC = () => {
+export const FinancePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('loans');
   const [loanAmount, setLoanAmount] = useState(100000);
   const [loanTenure, setLoanTenure] = useState(12);
