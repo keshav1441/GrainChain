@@ -107,16 +107,27 @@ const CheckoutPage: React.FC = () => {
     setIsProcessing(true);
     
     try {
-      // Create order data
+      // Guard: ensure cart has at least one item
+      if (!items || items.length === 0) {
+        toast.error('Your cart is empty');
+        return;
+      }
+
+      // Build payload per backend OrderCreate schema
       const orderData = {
-        items: items.map(item => ({
-          crop_listing_id: item.id,
-          quantity: item.selected_quantity,
+        items: items.map((it) => ({
+          crop_listing_id: it.id,
+          quantity: it.selected_quantity,
         })),
-        delivery_address: deliveryAddress,
-        payment_method: selectedPaymentMethod,
-        order_notes: '',
-        special_instructions: ''
+        delivery_address: {
+          name: deliveryAddress.name,
+          phone: deliveryAddress.phone,
+          address: deliveryAddress.address,
+          city: deliveryAddress.city,
+          state: deliveryAddress.state,
+          pincode: deliveryAddress.pincode,
+        },
+        payment_method: selectedPaymentMethod as 'upi' | 'card' | 'netbanking' | 'wallet' | 'cod',
       };
 
       // Create order
@@ -130,9 +141,9 @@ const CheckoutPage: React.FC = () => {
         toast.success('Order placed successfully! You can pay on delivery.');
         navigate('/order-success', { 
           state: { 
-            orderId: order.order_id,
+            orderId: order.id,
             amount: order.total_amount,
-            items: order.items.length,
+            items: items.length,
             paymentMethod: 'Cash on Delivery'
           } 
         });
@@ -213,9 +224,9 @@ const CheckoutPage: React.FC = () => {
         toast.success(`${paymentMethodName} payment completed successfully!`);
         navigate('/order-success', { 
           state: { 
-            orderId: order.order_id,
+            orderId: order.id,
             amount: order.total_amount,
-            items: order.items.length,
+            items: items.length,
             paymentMethod: paymentMethodName,
             paymentId: payment.payment_id
           } 
@@ -223,7 +234,18 @@ const CheckoutPage: React.FC = () => {
       }
       
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to place order. Please try again.');
+      // Normalize FastAPI validation error (which could be array/object) to string for toast
+      const detail = error?.response?.data?.detail;
+      let message = 'Failed to place order. Please try again.';
+      if (typeof detail === 'string') {
+        message = detail;
+      } else if (Array.isArray(detail)) {
+        // Pydantic validation error list
+        message = detail.map((d: any) => d?.msg || JSON.stringify(d)).join('\n');
+      } else if (detail && typeof detail === 'object') {
+        message = detail.msg || JSON.stringify(detail);
+      }
+      toast.error(message);
       console.error('Order placement error:', error);
     } finally {
       setIsProcessing(false);

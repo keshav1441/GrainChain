@@ -1,46 +1,52 @@
 import { useEffect } from 'react';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { useAuthStore } from './stores/authStore';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
+import { useAuthStore } from './stores/authStore';
 import {Navbar} from './components/layout/Navbar';
+import { Footer } from './components/layout/Footer';
+import ChatbotMascot from './components/chatbot/ChatbotMascot';
 import {HomePage} from './pages/HomePage';
 import {LoginPage} from './pages/auth/LoginPage';
 import {RegisterPage} from './pages/auth/RegisterPage';
 import {FarmerDashboard} from './pages/farmer/FarmerDashboard';
-import {FarmerListings} from './pages/farmer/FarmerListings';
-import {ViewListing} from './pages/farmer/ViewListing';
-import {EditListing} from './pages/farmer/EditListing';
-import {CreateListing} from './pages/farmer/CreateListing';
-import {FarmerAnalytics} from './pages/farmer/FarmerAnalytics';
-import {FarmerFinance} from './pages/farmer/FarmerFinance';
-import {FarmerProfile} from './pages/farmer/FarmerProfile';
-import {FarmerInquiries} from './pages/farmer/FarmerInquiries';
 import {BuyerDashboard} from './pages/buyer/BuyerDashboard';
 import {BuyerFarmers} from './pages/buyer/BuyerFarmers';
 import {BuyerInquiries} from './pages/buyer/BuyerInquiries';
 import {EditInquiry} from './pages/buyer/EditInquiry';
 import {BuyerAnalytics} from './pages/buyer/BuyerAnalytics';
 import {FinancierDashboard} from './pages/financier/FinancierDashboard';
-import {Applications} from './pages/financier/Applications';
+import {MarketplacePage} from './pages/MarketplacePage';
 import {ApplicationDetails} from './pages/financier/ApplicationDetails';
 import {Farmers} from './pages/financier/Farmers';
 import {Analytics} from './pages/financier/Analytics';
 import {LoanProducts} from './pages/financier/LoanProducts';
 import {CreateProduct} from './pages/financier/CreateProduct';
 import {ProfilePage} from './pages/ProfilePage';
-import MarketplacePage from './pages/MarketplacePage';
-import FinancePage from './pages/FinancePage';
-import NotificationsPage from './pages/NotificationsPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import ContactPage from './pages/ContactPage';
-import PaymentDashboard from './pages/PaymentDashboard';
-import CartPage from './pages/CartPage';
+import {FinancePage} from './pages/FinancePage';
+import {NotificationsPage} from './pages/NotificationsPage';
+import {ProductDetailPage} from './pages/ProductDetailPage';
+import {ContactPage} from './pages/ContactPage';
+import {PaymentDashboard} from './pages/PaymentDashboard';
+import {CartPage} from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import AIFeaturesPage from './pages/AIFeaturesPage';
 import {ProtectedRoute} from './components/auth/ProtectedRoute';
-import {Footer} from './components/layout/Footer';
-import { Toaster } from 'react-hot-toast';
+
+// Import farmer components
+import FarmerListings from './pages/farmer/FarmerListings';
+import {CreateListing} from './pages/farmer/CreateListing';
+import ViewListing from './pages/farmer/ViewListing';
+import EditListing from './pages/farmer/EditListing';
+import {FarmerAnalytics} from './pages/farmer/FarmerAnalytics';
+import {FarmerFinance} from './pages/farmer/FarmerFinance';
+import {FarmerProfile} from './pages/farmer/FarmerProfile';
+import FarmerInquiries from './pages/farmer/FarmerInquiries';
+
+
+// Import financier components
+import {Applications} from './pages/financier/Applications';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -373,6 +379,9 @@ export default function App() {
           
           <Footer />
         </div>
+        
+        {/* Chatbot Mascot */}
+        <ChatbotMascot />
         
         {/* Toast notifications */}
         <Toaster

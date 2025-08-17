@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  MagnifyingGlassIcon,
   ShoppingCartIcon,
-  TruckIcon,
-  ChartBarIcon,
   UserGroupIcon,
+  ChartBarIcon,
+  TruckIcon,
   ClockIcon,
+  SparklesIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
 import { buyerApi, cropApi } from '../../services/api';
+import ChatbotMascot from '../../components/chatbot/ChatbotMascot';
 
 interface DashboardStats {
   active_orders: number;
@@ -23,8 +25,8 @@ interface Listing {
   crop_name: string;
   variety?: string;
   quantity_available: number;
-  price_per_unit: number;
   unit?: string;
+  price_per_kg: number;
   grade?: string;
   location?: string;
   harvest_date?: string;
@@ -85,6 +87,16 @@ export const BuyerDashboard: React.FC = () => {
         setListings(listingsResponse.data || []);
         setRecentInquiries(inquiriesResponse.data || []);
         
+        // Mock data for now - replace with actual API calls when backend is ready
+        setStats({
+          active_orders: 12,
+          total_procurement: 45000,
+          pending_deliveries: 8,
+          active_farmers: 156
+        });
+        
+        setListings([]);
+        setRecentInquiries([]);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
         
@@ -183,7 +195,12 @@ export const BuyerDashboard: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
+          <button 
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -203,11 +220,9 @@ export const BuyerDashboard: React.FC = () => {
             </p>
           </div>
           <div className="mt-4 flex md:mt-0 md:ml-4">
-            <Link to="/marketplace">
-              <Button variant="primary">
-                <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
-                Browse Marketplace
-              </Button>
+            <Link to="/marketplace" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+              <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
+              Browse Marketplace
             </Link>
           </div>
         </div>
@@ -294,28 +309,25 @@ export const BuyerDashboard: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-lg font-semibold text-gray-900">
-                                ₹{listing.price_per_unit.toLocaleString()}/unit
+                                ₹{listing.price_per_kg.toLocaleString()}/kg
                               </p>
                               <p className="text-sm text-gray-500">
-                                {listing.quantity_available} units available
+                                {listing.quantity_available} kg available
                               </p>
                             </div>
                             <div className="flex space-x-2">
-                              <Link to={`/buyer/listings/${listing._id}`}>
-                                <Button variant="outline" size="sm">
-                                  View Details
-                                </Button>
+                              <Link to={`/buyer/listings/${listing._id}`} className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                View Details
                               </Link>
-                              <Button 
-                                variant="primary" 
-                                size="sm"
+                              <button 
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                                 onClick={() => {
-                                  // Navigate to inquiry form
-                                  window.location.href = `/buyer/listings/${listing._id}?action=inquiry`;
+                                  // Handle inquiry creation
+                                  console.log('Send inquiry for listing:', listing._id);
                                 }}
                               >
                                 Send Inquiry
-                              </Button>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -385,35 +397,35 @@ export const BuyerDashboard: React.FC = () => {
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
               Quick Actions
             </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Link to="/marketplace">
-                <Button variant="outline" className="justify-start w-full">
-                  <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
-                  Search Crops
-                </Button>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <Link to="/marketplace" className="inline-flex items-center justify-start w-full px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
+                Search Crops
               </Link>
-              <Link to="/buyer/farmers">
-                <Button variant="outline" className="justify-start w-full">
-                  <UserGroupIcon className="h-5 w-5 mr-2" />
-                  Find Farmers
-                </Button>
+              <Link to="/buyer/farmers" className="inline-flex items-center justify-start w-full px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                <UserGroupIcon className="h-5 w-5 mr-2" />
+                Find Farmers
               </Link>
-              <Link to="/buyer/analytics">
-                <Button variant="outline" className="justify-start w-full">
-                  <ChartBarIcon className="h-5 w-5 mr-2" />
-                  View Analytics
-                </Button>
+              <Link to="/buyer/analytics" className="inline-flex items-center justify-start w-full px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                <ChartBarIcon className="h-5 w-5 mr-2" />
+                View Analytics
               </Link>
-              <Link to="/buyer/inquiries">
-                <Button variant="outline" className="justify-start w-full">
-                  <TruckIcon className="h-5 w-5 mr-2" />
-                  Track Inquiries
-                </Button>
+              <Link to="/buyer/inquiries" className="inline-flex items-center justify-start w-full px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                <TruckIcon className="h-5 w-5 mr-2" />
+                Track Inquiries
+              </Link>
+              <Link to="/ai-features" className="inline-flex items-center justify-start w-full px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                <SparklesIcon className="h-5 w-5 mr-2" />
+                AI Features
               </Link>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+      
+      {/* Chatbot Mascot */}
+      <ChatbotMascot />
+      </div>
+  )
 };

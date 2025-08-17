@@ -14,7 +14,7 @@ import {
 import { useCartStore } from '../stores/cartStore';
 import toast from 'react-hot-toast';
 
-const CartPage: React.FC = () => {
+export const CartPage: React.FC = () => {
   const { 
     items, 
     removeFromCart, 

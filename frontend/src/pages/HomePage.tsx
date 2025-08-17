@@ -6,7 +6,6 @@ import {
   ShieldCheckIcon,
   ArrowRightIcon,
   CheckIcon,
-  StarIcon,
   PhoneIcon,
   EnvelopeIcon,
   ShoppingCartIcon

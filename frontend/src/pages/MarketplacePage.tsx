@@ -31,7 +31,7 @@ interface CropListing {
   originalPrice?: number;
 }
 
-const MarketplacePage: React.FC = () => {
+export const MarketplacePage: React.FC = () => {
   const [listings, setListings] = useState<CropListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

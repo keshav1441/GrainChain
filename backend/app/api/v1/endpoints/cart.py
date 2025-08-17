@@ -48,7 +48,7 @@ async def add_to_cart(
         )
 
     # Ensure required fields exist in DB
-    required_fields = ["crop_type", "farmer_id", "farmer_name", "price_per_unit", "location", "quantity"]
+    required_fields = ["crop_type", "farmer_id", "farmer_name", "price_per_kg", "location", "quantity"]
     for field in required_fields:
         if field not in crop_listing:
             raise HTTPException(
@@ -106,12 +106,12 @@ async def add_to_cart(
     # Create new cart item
     cart_item = CartItem(
         user_id=str(current_user.id),
-        crop_listing_id=str(item_data.crop_listing_id),
-        crop_type=crop_listing["crop_type"],  # fixed field name
+        crop_listing_id=item_data.crop_listing_id,
+        crop_type=crop_listing["crop_type"],
         farmer_id=str(crop_listing["farmer_id"]),
-        farmer_name=crop_listing["farmer_name"],
-        price_per_kg=float(crop_listing["price_per_unit"]),
-        location=crop_listing["location"],
+        farmer_name=crop_listing.get("farmer_name", "Unknown Farmer"),
+        price_per_kg=float(crop_listing["price_per_kg"]),
+        location=crop_listing.get("location", "Unknown"),
         quantity=item_data.quantity,
         max_quantity=crop_listing["quantity"],
         added_at=datetime.utcnow()
@@ -300,7 +300,7 @@ async def create_order(
                 detail=f"Requested quantity for {crop_listing['crop_type']} exceeds available stock"
             )
         
-        total_price = item_data.quantity * float(crop_listing["price_per_unit"])
+        total_price = item_data.quantity * float(crop_listing["price_per_kg"])
         subtotal += total_price
         
         order_items.append(OrderItem(
@@ -309,7 +309,7 @@ async def create_order(
             farmer_id=str(crop_listing["farmer_id"]),
             farmer_name=crop_listing["farmer_name"],
             quantity=item_data.quantity,
-            price_per_kg=float(crop_listing["price_per_unit"]),
+            price_per_kg=float(crop_listing["price_per_kg"]),
             total_price=total_price,
             location=crop_listing["location"]
         ))

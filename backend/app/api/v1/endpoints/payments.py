@@ -5,6 +5,7 @@ import uuid
 import hashlib
 import hmac
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson import ObjectId
 
 from app.core.database import get_database
 from app.api.deps import get_current_user
@@ -203,7 +204,7 @@ async def verify_payment(
     
     # Update order status
     await db.orders.update_one(
-        {"_id": payment["order_id"]},
+        {"_id": ObjectId(payment["order_id"])},
         {
             "$set": {
                 "payment_status": PaymentStatus.COMPLETED,
@@ -291,7 +292,7 @@ async def refund_payment(
     
     # Update order status
     await db.orders.update_one(
-        {"_id": payment["order_id"]},
+        {"_id": ObjectId(payment["order_id"])},
         {
             "$set": {
                 "payment_status": PaymentStatus.REFUNDED,

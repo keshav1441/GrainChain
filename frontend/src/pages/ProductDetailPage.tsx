@@ -39,7 +39,7 @@ interface CropListing {
   harvest_date?: string;
 }
 
-const ProductDetailPage: React.FC = () => {
+export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();

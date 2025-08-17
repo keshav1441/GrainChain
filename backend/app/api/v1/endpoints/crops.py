@@ -126,7 +126,7 @@ async def get_crop_listings(
             
             # Ensure all required fields exist with defaults
             if "price_per_kg" not in doc:
-                doc["price_per_kg"] = doc.get("price_per_unit", 0.0)
+                doc["price_per_kg"] = doc.get("price_per_kg", 0.0)
             if "farmer_name" not in doc:
                 doc["farmer_name"] = "Unknown Farmer"
             if "location" not in doc:
@@ -243,7 +243,7 @@ async def get_crop_listing(
         
         # Ensure all required fields exist with defaults
         if "price_per_kg" not in listing_doc:
-            listing_doc["price_per_kg"] = listing_doc.get("price_per_unit", 0.0)
+            listing_doc["price_per_kg"] = listing_doc.get("price_per_kg", 0.0)
         if "farmer_name" not in listing_doc:
             listing_doc["farmer_name"] = "Unknown Farmer"
         if "location" not in listing_doc:
@@ -285,7 +285,7 @@ async def get_marketplace_crops(
             
             # Ensure all required fields exist with defaults
             if "price_per_kg" not in doc:
-                doc["price_per_kg"] = doc.get("price_per_unit", 0.0)
+                doc["price_per_kg"] = doc.get("price_per_kg", 0.0)
             if "farmer_name" not in doc:
                 doc["farmer_name"] = "Unknown Farmer"
             if "location" not in doc:
@@ -324,7 +324,7 @@ async def get_my_listings(
             
             # Ensure all required fields exist with defaults
             if "price_per_kg" not in doc:
-                doc["price_per_kg"] = doc.get("price_per_unit", 0.0)
+                doc["price_per_kg"] = doc.get("price_per_kg", 0.0)
             if "farmer_name" not in doc:
                 doc["farmer_name"] = current_user.full_name or "Unknown Farmer"
             if "location" not in doc:

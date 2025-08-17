@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import Optional
 import os
 from dotenv import load_dotenv
@@ -36,8 +37,12 @@ class Settings(BaseSettings):
     PAYMENT_GATEWAY_KEY: Optional[str] = None
     
     # AI/ML Configuration
-    GEMINI_API_KEY: str = "AIzaSyB5i1za3A2q2mvYAAuAcG7JsNpgJwfYDtw"
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_API_KEY: str = Field(..., env="GEMINI_API_KEY")
+    GEMINI_MODEL: str = Field(default="gemini-1.5-flash", env="GEMINI_MODEL")
+    
+    # Groq Configuration for Chatbot
+    GROQ_API_KEY: str = Field(..., env="GROQ_API_KEY")
+    GROQ_MODEL: str = Field(default="llama3-8b-8192", env="GROQ_MODEL")
     
     # Email Settings
     SMTP_HOST: str = "smtp.gmail.com"
