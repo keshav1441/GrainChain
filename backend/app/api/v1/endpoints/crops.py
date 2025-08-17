@@ -12,9 +12,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 from bson import ObjectId
 
-from ....api.deps import get_current_user
-from ....models.user import User
-from ....core.database import get_db, get_collection
+from app.api.deps import get_current_user
+from app.models.user import User, UserRole
+from app.core.database import get_db, get_collection
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +152,7 @@ async def create_crop_listing(
     """Create a new crop listing (farmers only)"""
     try:
         # Only farmers can create crop listings
-        if current_user.role != "farmer":
+        if current_user.role != UserRole.FARMER:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only farmers can create crop listings"
@@ -309,7 +309,7 @@ async def get_my_listings(
 ):
     """Get all crop listings for the current farmer"""
     try:
-        if current_user.role != "farmer":
+        if current_user.role != UserRole.FARMER:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only farmers can view their listings"
@@ -354,7 +354,7 @@ async def get_farmer_inquiries(
 ):
     """Get all inquiries for the current farmer's listings"""
     try:
-        if current_user.role != "farmer":
+        if current_user.role != UserRole.FARMER:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only farmers can view inquiries"
@@ -427,7 +427,7 @@ async def respond_to_inquiry(
 ):
     """Update the status of an inquiry (accept/reject)"""
     try:
-        if current_user.role != "farmer":
+        if current_user.role != UserRole.FARMER:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only farmers can respond to inquiries"
