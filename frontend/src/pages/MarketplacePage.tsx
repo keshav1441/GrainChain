@@ -38,6 +38,9 @@ const MarketplacePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('featured');
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [showOnlyInStock, setShowOnlyInStock] = useState(false);
+  const [showOnlyOrganic, setShowOnlyOrganic] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isVisible, setIsVisible] = useState(false);
   const [quantities, setQuantities] = useState<{[key: string]: number}>({});
@@ -179,23 +182,55 @@ const MarketplacePage: React.FC = () => {
 
   const categories = [
     { id: 'all', name: 'All Products' },
-    { id: 'grains', name: 'Grains & Cereals' },
-    { id: 'vegetables', name: 'Vegetables' },
-    { id: 'fruits', name: 'Fruits' },
-    { id: 'pulses', name: 'Pulses & Legumes' },
-    { id: 'spices', name: 'Spices & Herbs' },
-    { id: 'organic', name: 'Organic Products' }
+    { id: 'grains', name: 'Grains & Cereals', keywords: ['rice', 'wheat', 'corn', 'barley', 'oats', 'millet', 'sorghum', 'rye'] },
+    { id: 'vegetables', name: 'Vegetables', keywords: ['tomato', 'potato', 'onion', 'carrot', 'cabbage', 'cauliflower', 'spinach', 'brinjal', 'okra', 'peas', 'beans', 'cucumber', 'capsicum', 'chilli', 'garlic', 'ginger'] },
+    { id: 'fruits', name: 'Fruits', keywords: ['apple', 'banana', 'orange', 'mango', 'grapes', 'pomegranate', 'papaya', 'guava', 'pineapple', 'watermelon', 'melon', 'strawberry', 'coconut'] },
+    { id: 'pulses', name: 'Pulses & Legumes', keywords: ['lentil', 'chickpea', 'pea', 'bean', 'dal', 'masoor', 'chana', 'rajma', 'urad', 'moong', 'toor', 'arhar'] },
+    { id: 'spices', name: 'Spices & Herbs', keywords: ['turmeric', 'chili', 'coriander', 'cumin', 'fenugreek', 'mustard', 'cardamom', 'cinnamon', 'cloves', 'pepper', 'ginger', 'garlic', 'mint', 'basil'] },
+    { id: 'organic', name: 'Organic Products', keywords: [] } // Special case - filter by organic flag
   ];
 
   const filteredListings = listings.filter(listing => {
     const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch = listing.crop_type.toLowerCase().includes(searchTermLower) ||
-                          listing.farmer_name.toLowerCase().includes(searchTermLower) ||
-                          listing.location.toLowerCase().includes(searchTermLower);
+    const cropTypeLower = listing.crop_type.toLowerCase();
+    const farmerNameLower = listing.farmer_name.toLowerCase();
+    const locationLower = listing.location.toLowerCase();
+    
+    // Search filter - matches crop type, farmer name, or location
+    const matchesSearch = !searchTerm || 
+      cropTypeLower.includes(searchTermLower) ||
+      farmerNameLower.includes(searchTermLower) ||
+      locationLower.includes(searchTermLower);
 
-    const matchesCategory = selectedCategory === 'all' || listing.crop_type.toLowerCase().includes(selectedCategory.toLowerCase());
+    // Category filter
+    let matchesCategory = true;
+    if (selectedCategory !== 'all') {
+      const category = categories.find(cat => cat.id === selectedCategory);
+      if (category) {
+        if (selectedCategory === 'organic') {
+          // Special case for organic filter
+          matchesCategory = listing.organic === true;
+        } else if (category.keywords) {
+          // Check if crop type matches any keywords in the category
+          matchesCategory = category.keywords.some(keyword => 
+            cropTypeLower.includes(keyword.toLowerCase())
+          );
+        }
+      }
+    }
 
-    return matchesSearch && matchesCategory;
+    // Price range filter
+    const matchesPriceRange = 
+      (!priceRange.min || listing.price_per_kg >= parseFloat(priceRange.min)) &&
+      (!priceRange.max || listing.price_per_kg <= parseFloat(priceRange.max));
+
+    // Stock availability filter
+    const matchesStock = !showOnlyInStock || listing.quantity > 0;
+
+    // Organic filter (separate from category)
+    const matchesOrganicFilter = !showOnlyOrganic || listing.organic === true;
+
+    return matchesSearch && matchesCategory && matchesPriceRange && matchesStock && matchesOrganicFilter;
   });
 
   const sortedListings = [...filteredListings].sort((a, b) => {
@@ -205,7 +240,11 @@ const MarketplacePage: React.FC = () => {
       return b.price_per_kg - a.price_per_kg;
     } else if (sortBy === 'rating') {
       return (b.rating || 0) - (a.rating || 0);
+    } else if (sortBy === 'newest') {
+      // Sort by newest first (assuming more recent data appears later)
+      return b.id.localeCompare(a.id);
     }
+    // Default: featured (keep original order)
     return 0;
   });
 
@@ -264,6 +303,68 @@ const MarketplacePage: React.FC = () => {
                   ))}
                 </div>
               </div>
+              {/* Price Range Filter */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Price Range (₹)</h3>
+                <div className="flex space-x-2">
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={priceRange.min}
+                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={priceRange.max}
+                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Additional Filters */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Filters</h3>
+                <div className="space-y-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={showOnlyInStock}
+                      onChange={(e) => setShowOnlyInStock(e.target.checked)}
+                      className="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">In Stock Only</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={showOnlyOrganic}
+                      onChange={(e) => setShowOnlyOrganic(e.target.checked)}
+                      className="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Organic Only</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              <div className="mb-6">
+                <button
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setPriceRange({ min: '', max: '' });
+                    setShowOnlyInStock(false);
+                    setShowOnlyOrganic(false);
+                    setSearchTerm('');
+                  }}
+                  className="w-full px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+
               <div>
                 <h3 className="font-semibold text-gray-900 mb-4">Sort By</h3>
                 <select
@@ -275,6 +376,7 @@ const MarketplacePage: React.FC = () => {
                   <option value="price-asc">Price: Low to High</option>
                   <option value="price-desc">Price: High to Low</option>
                   <option value="rating">Highest Rated</option>
+                  <option value="newest">Newest First</option>
                 </select>
               </div>
             </div>

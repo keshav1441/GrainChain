@@ -76,7 +76,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     >
       {/* Discount Badge */}
       {discountPercentage > 0 && (
-        <div className="absolute top-3 left-3 z-20 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+        <div className="absolute top-3 left-14 z-20 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
           -{discountPercentage}%
         </div>
       )}
