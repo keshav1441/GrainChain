@@ -7,10 +7,9 @@ import {
   ChartBarIcon,
   UserGroupIcon,
   ClockIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
-import { buyerApi } from '../../services/api';
+import { buyerApi, cropApi } from '../../services/api';
 
 interface DashboardStats {
   active_orders: number;
@@ -22,9 +21,10 @@ interface DashboardStats {
 interface Listing {
   _id: string;
   crop_name: string;
-  variety: string;
+  variety?: string;
   quantity_available: number;
   price_per_unit: number;
+  unit?: string;
   grade?: string;
   location?: string;
   harvest_date?: string;
@@ -32,6 +32,9 @@ interface Listing {
     full_name: string;
     state?: string;
   };
+  category?: string;
+  created_at?: string;
+  status?: string;
 }
 
 interface Inquiry {
@@ -61,18 +64,40 @@ export const BuyerDashboard: React.FC = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [statsResponse, listingsResponse, inquiriesResponse] = await Promise.all([
+        console.log('Fetching dashboard data...');
+        
+        // Try to fetch listings separately first to debug
+        console.log('Fetching listings...');
+        const listingsResponse = await buyerApi.getListings({ limit: 3, sort_by: 'created_at', sort_order: 'desc' });
+        console.log('Listings response:', listingsResponse);
+        console.log('Listings data:', listingsResponse.data);
+        
+        // If listings work, try the other endpoints
+        const [statsResponse, inquiriesResponse] = await Promise.all([
           buyerApi.getDashboardStats(),
-          buyerApi.getListings({ limit: 3, sort_by: 'created_at', sort_order: 'desc' }),
           buyerApi.getInquiries({ limit: 3 })
         ]);
         
+        console.log('Stats response:', statsResponse.data);
+        console.log('Inquiries response:', inquiriesResponse.data);
+        
         setStats(statsResponse.data);
-        setListings(listingsResponse.data);
-        setRecentInquiries(inquiriesResponse.data);
+        setListings(listingsResponse.data || []);
+        setRecentInquiries(inquiriesResponse.data || []);
+        
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
-        setError('Failed to load dashboard data');
+        
+        // Try fallback to get listings from marketplace API
+        try {
+          console.log('Trying fallback marketplace listings...');
+          const marketplaceResponse = await cropApi.getMarketplaceListings(3);
+          console.log('Marketplace fallback response:', marketplaceResponse);
+          setListings(marketplaceResponse.data || []);
+        } catch (fallbackErr) {
+          console.error('Fallback also failed:', fallbackErr);
+          setError('Failed to load dashboard data');
+        }
       } finally {
         setLoading(false);
       }
@@ -360,7 +385,7 @@ export const BuyerDashboard: React.FC = () => {
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
               Quick Actions
             </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Link to="/marketplace">
                 <Button variant="outline" className="justify-start w-full">
                   <MagnifyingGlassIcon className="h-5 w-5 mr-2" />
@@ -383,12 +408,6 @@ export const BuyerDashboard: React.FC = () => {
                 <Button variant="outline" className="justify-start w-full">
                   <TruckIcon className="h-5 w-5 mr-2" />
                   Track Inquiries
-                </Button>
-              </Link>
-              <Link to="/ai-features">
-                <Button variant="outline" className="justify-start w-full">
-                  <SparklesIcon className="h-5 w-5 mr-2" />
-                  AI Features
                 </Button>
               </Link>
             </div>

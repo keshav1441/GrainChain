@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { cropApi } from '../services/api';
 import {
@@ -14,8 +14,11 @@ import {
   ShoppingCartIcon,
   PlusIcon,
   MinusIcon,
+  ChatBubbleOvalLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
 import { useCartStore } from '../stores/cartStore';
+import { InquiryForm } from '../components/forms/InquiryForm';
+import { useAuthStore } from '../stores/authStore';
 import toast from 'react-hot-toast';
 
 // Simplified interface to match the backend response
@@ -30,6 +33,7 @@ interface CropListing {
   status: string;
   description?: string; // Assuming description might be available
   // Placeholder for data not yet in backend
+  unit?: string;
   rating?: number;
   verified?: boolean;
   harvest_date?: string;
@@ -38,10 +42,12 @@ interface CropListing {
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [product, setProduct] = useState<CropListing | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
   const { addToCart, getItemCount } = useCartStore();
 
   useEffect(() => {
@@ -74,13 +80,13 @@ const ProductDetailPage: React.FC = () => {
     fetchProduct();
   }, [id]);
 
-  const updateQuantity = (newQuantity: number) => {
+  const updateQuantity = useCallback((newQuantity: number) => {
     if (product && newQuantity >= 1 && newQuantity <= product.quantity) {
       setQuantity(newQuantity);
     }
-  };
+  }, [product]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = useCallback(() => {
     if (!product) return;
     
     addToCart({
@@ -96,14 +102,50 @@ const ProductDetailPage: React.FC = () => {
       selected_quantity: quantity,
     });
     toast.success(`${product.crop_type} added to cart!`);
-  };
+  }, [product, quantity, addToCart]);
 
-  const handleBuyNow = () => {
+  const handleBuyNow = useCallback(() => {
     if (!product) return;
     
     handleAddToCart();
     navigate('/cart');
-  };
+  }, [product, handleAddToCart, navigate]);
+
+  const handleMakeInquiry = useCallback(() => {
+    if (!user) {
+      toast.error('Please login to make an inquiry');
+      navigate('/login');
+      return;
+    }
+    
+    if (user.role !== 'buyer') {
+      toast.error('Only buyers can make inquiries');
+      return;
+    }
+    
+    setShowInquiryModal(true);
+  }, [user, navigate]);
+
+  const handleInquirySuccess = useCallback(() => {
+    setShowInquiryModal(false);
+    toast.success('Inquiry sent successfully!');
+  }, []);
+
+  const handleInquiryCancel = useCallback(() => {
+    setShowInquiryModal(false);
+  }, []);
+
+  const handleQuantityDecrease = useCallback(() => {
+    updateQuantity(quantity - 1);
+  }, [updateQuantity, quantity]);
+
+  const handleQuantityIncrease = useCallback(() => {
+    updateQuantity(quantity + 1);
+  }, [updateQuantity, quantity]);
+
+  const handleBackToMarketplace = useCallback(() => {
+    navigate('/marketplace');
+  }, [navigate]);
 
   if (isLoading) {
     return (
@@ -134,7 +176,7 @@ const ProductDetailPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <button
-            onClick={() => navigate('/marketplace')}
+            onClick={handleBackToMarketplace}
             className="flex items-center text-sm text-gray-500 hover:text-gray-700"
           >
             <ArrowLeftIcon className="h-4 w-4 mr-1" />
@@ -143,7 +185,7 @@ const ProductDetailPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="p-8">
+          <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
               {/* Left side: Image and basic info */}
               <div>
@@ -217,7 +259,7 @@ const ProductDetailPage: React.FC = () => {
                     <span className="text-lg font-medium text-gray-700">Quantity (kg):</span>
                     <div className="flex items-center space-x-3">
                       <button
-                        onClick={() => updateQuantity(quantity - 1)}
+                        onClick={handleQuantityDecrease}
                         className="p-2 rounded-full bg-gray-100 border border-gray-300 hover:bg-gray-200 transition-colors"
                         disabled={quantity <= 1}
                       >
@@ -225,7 +267,7 @@ const ProductDetailPage: React.FC = () => {
                       </button>
                       <span className="w-16 text-center text-xl font-semibold">{quantity}</span>
                       <button
-                        onClick={() => updateQuantity(quantity + 1)}
+                        onClick={handleQuantityIncrease}
                         className="p-2 rounded-full bg-gray-100 border border-gray-300 hover:bg-gray-200 transition-colors"
                         disabled={quantity >= product.quantity}
                       >
@@ -263,6 +305,13 @@ const ProductDetailPage: React.FC = () => {
                         </span>
                       )}
                     </button>
+                    <button 
+                      onClick={handleMakeInquiry}
+                      className="w-full bg-blue-600 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                    >
+                      <ChatBubbleOvalLeftEllipsisIcon className="h-6 w-6 mr-2" />
+                      Make Inquiry
+                    </button>
                   </div>
                 </div>
               </div>
@@ -270,6 +319,21 @@ const ProductDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Inquiry Modal */}
+      {showInquiryModal && product && (
+        <InquiryForm
+          listingId={product.id}
+          cropName={product.crop_type}
+          farmerName={product.farmer_name}
+          currentPrice={product.price_per_kg}
+          availableQuantity={product.quantity}
+          unit={product.unit}
+          onSuccess={handleInquirySuccess}
+          onCancel={handleInquiryCancel}
+          isModal={true}
+        />
+      )}
     </div>
   );
 };

@@ -37,8 +37,8 @@ export const BuyerInquiries: React.FC = () => {
     const fetchInquiries = async () => {
       try {
         setLoading(true);
-        const params = filter !== 'all' ? { status: filter } : {};
-        const response = await buyerApi.getInquiries({ ...params, limit: 100 });
+        const params = filter !== 'all' ? { status: filter, limit: 100 } : { limit: 100 };
+        const response = await buyerApi.getInquiries(params);
         setInquiries(response.data);
       } catch (err) {
         console.error('Error fetching inquiries:', err);
@@ -249,16 +249,14 @@ export const BuyerInquiries: React.FC = () => {
                   <div className="flex space-x-2">
                     {(inquiry.status === 'pending' || inquiry.status === 'negotiating') && (
                       <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            // Navigate to edit inquiry
-                            window.location.href = `/buyer/inquiries/${inquiry._id}/edit`;
-                          }}
-                        >
-                          Edit
-                        </Button>
+                        <Link to={`/buyer/inquiries/${inquiry._id}/edit`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                          >
+                            Edit
+                          </Button>
+                        </Link>
                         <Button
                           variant="outline"
                           size="sm"

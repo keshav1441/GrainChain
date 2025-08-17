@@ -189,7 +189,29 @@ export const buyerApi = {
   getAnalytics: (period?: string) => api.get('/buyer/analytics', { params: { period } }),
   getFarmers: (params?: any) => api.get('/buyer/farmers', { params }),
   getListings: (params?: any) => api.get('/buyer/listings', { params }),
-  getInquiries: () => api.get('/buyer/inquiries'),
+  getInquiries: (params?: any) => api.get('/buyer/inquiries', { params }),
+  
+  // Inquiry management
+  createInquiry: (data: {
+    listing_id: string;
+    quantity_requested: number;
+    proposed_price?: number;
+    message?: string;
+    delivery_location?: string;
+    preferred_delivery_date?: string;
+  }) => api.post('/buyer/inquiries', data),
+  
+  updateInquiry: (inquiryId: string, data: {
+    quantity_requested?: number;
+    proposed_price?: number;
+    message?: string;
+    delivery_location?: string;
+    preferred_delivery_date?: string;
+  }) => api.put(`/buyer/inquiries/${inquiryId}`, data),
+  
+  cancelInquiry: (inquiryId: string) => api.delete(`/buyer/inquiries/${inquiryId}`),
+  
+  getInquiry: (inquiryId: string) => api.get(`/buyer/inquiries/${inquiryId}`),
 };
 
 // Financier API endpoints
@@ -298,107 +320,14 @@ export const cartApi = {
   getOrderStats: () => api.get('/orders/stats'),
 };
 
-// Payment interfaces
-export interface PaymentResponse {
-  id: string;
-  payment_id: string;
-  order_id: string;
-  amount: number;
-  currency: string;
-  payment_method: 'upi' | 'card' | 'netbanking' | 'wallet' | 'cod';
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
-  gateway_payment_id?: string;
-  gateway_order_id?: string;
-  created_at: string;
-}
-
-export interface PaymentGateway {
-  name: string;
-  display_name: string;
-  supported_methods: string[];
-  is_active: boolean;
-}
-
-export interface PaymentMethodInfo {
-  type: string;
-  display_name: string;
-  providers: string[];
-  is_active: boolean;
-}
-
 // Payment API endpoints
 export const paymentApi = {
-  // Payment method types
-  PAYMENT_METHODS: {
-    UPI: 'upi',
-    CARD: 'card',
-    NETBANKING: 'netbanking',
-    WALLET: 'wallet',
-    COD: 'cod'
-  },
-
-  // UPI payment methods
-  UPI_PROVIDERS: {
-    GOOGLE_PAY: 'googlepay',
-    PHONEPE: 'phonepe',
-    PAYTM: 'paytm',
-    AMAZON_PAY: 'amazonpay',
-    BHIM: 'bhim'
-  },
-
-  // Net banking providers
-  NET_BANKING_BANKS: {
-    SBI: 'sbi',
-    HDFC: 'hdfc',
-    ICICI: 'icici',
-    AXIS: 'axis',
-    KOTAK: 'kotak',
-    PNB: 'pnb'
-  },
-
-  // Card types
-  CARD_TYPES: {
-    VISA: 'visa',
-    MASTERCARD: 'mastercard',
-    RUPAY: 'rupay',
-    AMEX: 'amex'
-  },
-
   createPayment: (data: {
     order_id: string;
-    payment_method: 'upi' | 'card' | 'netbanking' | 'wallet' | 'cod';
+    payment_method: string;
     gateway_name?: string;
   }) => api.post('/payments/create', data),
-
-  // UPI specific endpoints
-  initiateUPIPayment: (data: {
-    order_id: string;
-    upi_id?: string;
-    upi_provider?: string;
-  }) => api.post('/payments/upi/initiate', data),
-
-  verifyUPIPayment: (data: {
-    payment_id: string;
-    upi_transaction_id?: string;
-    upi_ref_id?: string;
-  }) => api.post('/payments/upi/verify', data),
-
-  // Card endpoints (covers both debit and credit)
-  initiateCardPayment: (data: {
-    order_id: string;
-    card_number?: string;
-    card_holder_name?: string;
-    expiry_month?: string;
-    expiry_year?: string;
-    bank_ref_id?: string;
-  }) => api.post('/payments/netbanking/verify', data),
-
-  // Payment gateway and method info
-  getAvailableGateways: () => api.get('/payments/gateways'),
   
-  getPaymentMethods: () => api.get('/payments/methods'),
-
-  // Payment verification and status
   verifyPayment: (data: {
     payment_id: string;
     gateway_payment_id: string;
@@ -408,18 +337,15 @@ export const paymentApi = {
   
   getPayment: (paymentId: string) => api.get(`/payments/${paymentId}`),
   
-  getPaymentStatus: (paymentId: string) => api.get(`/payments/${paymentId}/status`),
-
-  // Refunds
   processRefund: (paymentId: string, reason?: string) => 
     api.post(`/payments/${paymentId}/refund`, { reason }),
-
-  // Testing endpoints (for development)
+  
+  // Testing endpoints
   simulateSuccess: (paymentId: string) => 
     api.post(`/payments/simulate/success/${paymentId}`),
   
   simulateFailure: (paymentId: string) => 
-    api.post(`/payments/simulate/failure/${paymentId}`)
+    api.post(`/payments/simulate/failure/${paymentId}`),
 };
 
 export default api;
