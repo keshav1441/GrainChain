@@ -12,7 +12,7 @@ import { buyerApi } from '../../services/api';
 interface Inquiry {
   id: string;
   listing_id: string;
-  quantity_requested: number;
+  quantity: number;
   proposed_price: number;
   status: string;
   created_at: string;
@@ -211,13 +211,13 @@ export const BuyerInquiries: React.FC = () => {
                       <strong>Farmer:</strong> {inquiry.listing?.farmer?.full_name || 'Unknown'}
                     </p>
                     <p className="text-sm text-gray-600 mb-1">
-                      <strong>Quantity:</strong> {inquiry.quantity_requested} units
+                      <strong>Quantity:</strong> {inquiry.quantity} units
                     </p>
                     <p className="text-sm text-gray-600 mb-1">
                       <strong>Proposed Price:</strong> {inquiry.proposed_price ? `₹${inquiry.proposed_price.toLocaleString()}/unit` : 'Not specified'}
                     </p>
                     <p className="text-sm text-gray-600">
-                      <strong>Total Value:</strong> {inquiry.proposed_price ? `₹${(inquiry.proposed_price * inquiry.quantity_requested).toLocaleString()}` : 'N/A'}
+                      <strong>Total Value:</strong> {inquiry.proposed_price ? `₹${(inquiry.proposed_price * inquiry.quantity).toLocaleString()}` : 'N/A'}
                     </p>
                   </div>
                   <div>

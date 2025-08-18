@@ -93,18 +93,28 @@ export const EditInquiry: React.FC = () => {
   }, [id]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? (value === '' ? 0 : parseFloat(value) || 0) : value,
-    }));
-
-    // Clear error when user starts typing
-    if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+  const { name, value, type } = e.target;
+  
+  let processedValue = value;
+  if (type === 'number') {
+    if (value === '') {
+      processedValue = "0";
+    } else {
+      const parsed = parseFloat(value);
+      processedValue = isNaN(parsed) ? "0" : parsed.toString();
     }
-  };
+  }
+  
+  setFormData(prev => ({
+    ...prev,
+    [name]: processedValue,
+  }));
+
+  // Clear error when user starts typing
+  if (errors[name as keyof FormErrors]) {
+    setErrors(prev => ({ ...prev, [name]: undefined }));
+  }
+};
 
   const validateForm = () => {
     const newErrors: FormErrors = {};
