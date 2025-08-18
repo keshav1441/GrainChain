@@ -60,9 +60,15 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+    import os
+    
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True if settings.ENVIRONMENT == "development" else False
+        host=host,
+        port=port,
+        reload=settings.DEBUG,
+        workers=1 if settings.DEBUG else (os.cpu_count() or 1) * 2 + 1
     )
