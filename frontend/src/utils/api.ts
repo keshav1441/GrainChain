@@ -20,7 +20,7 @@ export const getFormDataAuthHeaders = () => {
 };
 
 export const apiRequest = async (url: string, options: RequestInit = {}) => {
-  const baseURL = 'http://localhost:8000'; // Adjust this to your backend URL
+  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   const fullURL = `${baseURL}${url}`;
   
   console.log('Making API request to:', fullURL);

@@ -36,7 +36,7 @@ export const ProfilePage: React.FC = () => {
         return;
       }
       
-      const response = await fetch('http://localhost:8000/api/v1/users/verification/status', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/users/verification/status`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
