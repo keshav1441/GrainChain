@@ -10,9 +10,9 @@ import { Button } from '../../components/ui/Button';
 import { buyerApi } from '../../services/api';
 
 interface Inquiry {
-  _id: string;
+  id: string;
   listing_id: string;
-  quantity_requested: number;
+  quantity: number;
   proposed_price: number;
   status: string;
   created_at: string;
@@ -92,7 +92,7 @@ export const BuyerInquiries: React.FC = () => {
     
     try {
       await buyerApi.cancelInquiry(inquiryId);
-      setInquiries(inquiries.filter(inquiry => inquiry._id !== inquiryId));
+      setInquiries(inquiries.filter(inquiry => inquiry.id !== inquiryId));
     } catch (err) {
       console.error('Error cancelling inquiry:', err);
       alert('Failed to cancel inquiry. Please try again.');
@@ -187,7 +187,7 @@ export const BuyerInquiries: React.FC = () => {
         <div className="mt-8 space-y-6">
           {inquiries.map((inquiry) => (
             <div
-              key={inquiry._id}
+              key={inquiry.id}
               className="bg-white shadow rounded-lg overflow-hidden"
             >
               <div className="p-6">
@@ -211,13 +211,13 @@ export const BuyerInquiries: React.FC = () => {
                       <strong>Farmer:</strong> {inquiry.listing?.farmer?.full_name || 'Unknown'}
                     </p>
                     <p className="text-sm text-gray-600 mb-1">
-                      <strong>Quantity:</strong> {inquiry.quantity_requested} units
+                      <strong>Quantity:</strong> {inquiry.quantity} units
                     </p>
                     <p className="text-sm text-gray-600 mb-1">
-                      <strong>Proposed Price:</strong> ₹{inquiry.proposed_price.toLocaleString()}/unit
+                      <strong>Proposed Price:</strong> {inquiry.proposed_price ? `₹${inquiry.proposed_price.toLocaleString()}/unit` : 'Not specified'}
                     </p>
                     <p className="text-sm text-gray-600">
-                      <strong>Total Value:</strong> ₹{(inquiry.proposed_price * inquiry.quantity_requested).toLocaleString()}
+                      <strong>Total Value:</strong> {inquiry.proposed_price ? `₹${(inquiry.proposed_price * inquiry.quantity).toLocaleString()}` : 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -257,7 +257,7 @@ export const BuyerInquiries: React.FC = () => {
                   <div className="flex space-x-2">
                     {(inquiry.status === 'pending' || inquiry.status === 'negotiating') && (
                       <>
-                        <Link to={`/buyer/inquiries/${inquiry._id}/edit`}>
+                        <Link to={`/buyer/inquiries/${inquiry.id}/edit`}>
                           <Button
                             variant="outline"
                             size="sm"
@@ -268,7 +268,7 @@ export const BuyerInquiries: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleCancelInquiry(inquiry._id)}
+                          onClick={() => handleCancelInquiry(inquiry.id)}
                           className="text-red-600 hover:text-red-700"
                         >
                           Cancel

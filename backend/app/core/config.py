@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     FRONTEND_URL: str = os.getenv("FRONTEND_URL")
-
-    
+    PORT: int = 8000
+    HOST: str = "0.0.0.0"
     # MongoDB Settings
     MONGODB_URL: str = os.getenv("MONGODB_URL")
     MONGODB_DATABASE: str = os.getenv("MONGODB_DATABASE")
