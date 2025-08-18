@@ -47,7 +47,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
 
   const fetchVerificationStatus = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/users/verification/status`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users/verification/status`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -69,7 +69,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
     formData.append('file', file);
     formData.append('document_type', documentType);
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/users/documents/upload`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/documents/upload`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -124,7 +124,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
       let submitData: { [key: string]: string | string[] | undefined } = {};
 
       if (user.role === 'farmer') {
-        endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/users/verification/farmer/submit`;
+        endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/verification/farmer/submit`;
         submitData = {
           land_ownership_doc: uploadedDocs.land_ownership_doc as string,
           land_photo_with_farmer: uploadedDocs.land_photo_with_farmer as string,
@@ -133,7 +133,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
           pan_card: uploadedDocs.pan_card as string,
         };
       } else if (user.role === 'financier') {
-        endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/users/verification/financier/submit`;
+        endpoint = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/users/verification/financier/submit`;
         submitData = {
           aadhar_card: uploadedDocs.aadhar_card as string,
           pan_card: uploadedDocs.pan_card as string,

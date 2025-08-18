@@ -20,7 +20,7 @@ export const getFormDataAuthHeaders = () => {
 };
 
 export const apiRequest = async (url: string, options: RequestInit = {}) => {
-  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
   const fullURL = `${baseURL}${url}`;
   
   console.log('Making API request to:', fullURL);

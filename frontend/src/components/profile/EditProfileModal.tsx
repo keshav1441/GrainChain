@@ -140,7 +140,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         imageFormData.append('file', profileImage);
         imageFormData.append('document_type', 'profile_image');
 
-        const uploadResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/users/documents/upload`, {
+        const uploadResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/users/documents/upload`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -162,7 +162,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
       const token = localStorage.getItem('token') || '';
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/users/profile/update`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/users/profile/update`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
