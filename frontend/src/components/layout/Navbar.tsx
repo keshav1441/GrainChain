@@ -254,7 +254,7 @@ export const Navbar: React.FC = () => {
             </Link>
             <Link
               to="/ai-features"
-              className="text-gray-700 hover:text-primary-600 block px-3 py-2 text-base font-medium flex items-center"
+              className="text-gray-700 hover:text-primary-600 px-3 py-2 text-base font-medium flex items-center"
               onClick={() => setMobileMenuOpen(false)}
             >
               <SparklesIcon className="h-4 w-4 mr-1" />
