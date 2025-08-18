@@ -2,6 +2,7 @@ fastapi
 uvicorn
 pydantic
 pydantic-settings
+email_validator
 
 # MongoDB with async support
 motor
