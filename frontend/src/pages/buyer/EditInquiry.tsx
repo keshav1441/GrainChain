@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 interface InquiryData {
   _id: string;
   listing_id: string;
-  quantity_requested: number;
+  quantity: number;
   proposed_price: number;
   message?: string;
   delivery_location?: string;
@@ -26,7 +26,7 @@ interface InquiryData {
 }
 
 interface FormData {
-  quantity_requested: number;
+  quantity: number;
   proposed_price: number;
   message: string;
   delivery_location: string;
@@ -34,7 +34,7 @@ interface FormData {
 }
 
 interface FormErrors {
-  quantity_requested?: string;
+  quantity?: string;
   proposed_price?: string;
   message?: string;
   delivery_location?: string;
@@ -49,7 +49,7 @@ export const EditInquiry: React.FC = () => {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    quantity_requested: 0,
+    quantity: 0,
     proposed_price: 0,
     message: '',
     delivery_location: '',
@@ -73,7 +73,7 @@ export const EditInquiry: React.FC = () => {
         
         // Populate form with existing data
         setFormData({
-          quantity_requested: inquiryData.quantity_requested,
+          quantity: inquiryData.quantity,
           proposed_price: inquiryData.proposed_price,
           message: inquiryData.message || '',
           delivery_location: inquiryData.delivery_location || '',
@@ -109,10 +109,10 @@ export const EditInquiry: React.FC = () => {
   const validateForm = () => {
     const newErrors: FormErrors = {};
 
-    if (!formData.quantity_requested || formData.quantity_requested <= 0) {
-      newErrors.quantity_requested = 'Quantity must be greater than 0';
-    } else if (inquiry?.listing && formData.quantity_requested > inquiry.listing.quantity_available) {
-      newErrors.quantity_requested = `Quantity cannot exceed ${inquiry.listing.quantity_available} units`;
+    if (!formData.quantity || formData.quantity <= 0) {
+      newErrors.quantity = 'Quantity must be greater than 0';
+    } else if (inquiry?.listing && formData.quantity > inquiry.listing.quantity_available) {
+      newErrors.quantity = `Quantity cannot exceed ${inquiry.listing.quantity_available} units`;
     }
 
     if (!formData.proposed_price || formData.proposed_price <= 0) {
@@ -223,7 +223,10 @@ export const EditInquiry: React.FC = () => {
     );
   }
 
-  const totalValue = formData.quantity_requested * formData.proposed_price;
+  const quantity = Number(formData.quantity) || 0;
+  const proposedPrice = Number(formData.proposed_price) || 0;
+  const totalValue = quantity * proposedPrice;
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -251,25 +254,25 @@ export const EditInquiry: React.FC = () => {
             {/* Quantity and Price */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
-                <label htmlFor="quantity_requested" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700">
                   Quantity (units) *
                 </label>
                 <input
                   type="number"
-                  name="quantity_requested"
-                  id="quantity_requested"
+                  name="quantity"
+                  id="quantity"
                   min="1"
                   max={inquiry.listing?.quantity_available || 999999}
                   step="1"
                   required
-                  value={formData.quantity_requested}
+                  value={formData.quantity}
                   onChange={handleInputChange}
                   className={`mt-1 block w-full border ${
-                    errors.quantity_requested ? 'border-red-300' : 'border-gray-300'
+                    errors.quantity ? 'border-red-300' : 'border-gray-300'
                   } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500`}
                 />
-                {errors.quantity_requested && (
-                  <p className="mt-1 text-sm text-red-600">{errors.quantity_requested}</p>
+                {errors.quantity && (
+                  <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
                 )}
                 {inquiry.listing && (
                   <p className="mt-1 text-sm text-gray-500">
