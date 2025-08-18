@@ -203,7 +203,7 @@ const AIFeaturesPage: React.FC = () => {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-b-2xl shadow-lg min-h-[600px]">
+        <div className="bg-white rounded-b-2xl shadow-lg min-h-[600px] max-w-xl mx-auto">
           <div className="p-8">
             {renderTabContent()}
           </div>

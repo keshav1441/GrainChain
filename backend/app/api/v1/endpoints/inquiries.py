@@ -236,7 +236,7 @@ async def get_buyer_inquiries(
                 item["_id"] = str(item["_id"])
 
         logger.info(f"Found {len(result)} inquiries")
-        return result
+        return result[:3]
         
     except Exception as e:
         logger.error(f"Error in get_buyer_inquiries: {str(e)}", exc_info=True)

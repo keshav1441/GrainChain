@@ -38,6 +38,9 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 # Include buyer routes
 api_router.include_router(buyer.router, prefix="/buyer", tags=["buyer"])
 
+# Include finance routes
+api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
+
 
 # Health check endpoint
 @api_router.get("/health")

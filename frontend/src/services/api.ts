@@ -188,7 +188,21 @@ export const buyerApi = {
   getDashboardStats: () => api.get('/buyer/dashboard/stats'),
   getAnalytics: (period?: string) => api.get('/buyer/analytics', { params: { period } }),
   getFarmers: (params?: any) => api.get('/buyer/farmers', { params }),
-  getListings: (params?: any) => api.get('/buyer/listings', { params }),
+  getListings: (params: { 
+    limit?: number; 
+    sort_by?: string; 
+    sort_order?: string; 
+    status?: string;
+    [key: string]: any;
+  } = {}) => api.get('/buyer/listings', { 
+    params: {
+      limit: params.limit,
+      sort_by: params.sort_by,
+      sort_order: params.sort_order,
+      status: params.status,
+      ...params
+    } 
+  }),
   
   // Inquiry management
   getInquiries: (params?: any) => api.get('/inquiries', { params }),

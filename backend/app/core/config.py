@@ -12,12 +12,14 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL")
+    # Use env var if provided, otherwise default to local frontend in dev
+    FRONTEND_URL: str = Field(default="http://localhost:5173", env="FRONTEND_URL")
     PORT: int = 8000
     HOST: str = "0.0.0.0"
     # MongoDB Settings
-    MONGODB_URL: str = os.getenv("MONGODB_URL")
-    MONGODB_DATABASE: str = os.getenv("MONGODB_DATABASE")
+    # Optional so app can boot without DB in local/dev unless explicitly used
+    MONGODB_URL: Optional[str] = Field(default=None, env="MONGODB_URL")
+    MONGODB_DATABASE: Optional[str] = Field(default=None, env="MONGODB_DATABASE")
     
     # Redis Settings
     REDIS_URL: str = "redis://localhost:6379/0"
