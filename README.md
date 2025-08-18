@@ -3,6 +3,7 @@
 ## Overview
 GrainChain connects farmers directly with institutional buyers while providing seamless access to finance through an AI-powered platform. Our solution streamlines agricultural trade, reduces intermediaries, and democratizes access to financial services for farmers.
 
+
 ## Key Features
 
 ### For Farmers
