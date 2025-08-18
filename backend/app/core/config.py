@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL")
+
     
     # MongoDB Settings
     MONGODB_URL: str = os.getenv("MONGODB_URL")
