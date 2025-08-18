@@ -28,18 +28,17 @@ api_router.include_router(chatbot.router, prefix="/chatbot", tags=["chatbot"])
 # Note: cart endpoints already include the "/cart" prefix in their route definitions
 api_router.include_router(cart.router, tags=["cart"])
 
+# Include finance routes
+api_router.include_router(finance.router, tags=["finance"])
+
 # Include inquiries routes
 api_router.include_router(inquiries.router, prefix="/inquiries", tags=["inquiries"])
 
-# Include payment routes
-api_router.include_router(payments.router, tags=["payments"])# Include notifications routes
+# Include notifications routes
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 
 # Include buyer routes
 api_router.include_router(buyer.router, prefix="/buyer", tags=["buyer"])
-
-# Include finance routes
-api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
 
 
 # Health check endpoint

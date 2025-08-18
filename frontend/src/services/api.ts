@@ -111,7 +111,7 @@ export const marketApi = {
 
 // Finance API endpoints
 export const financeApi = {
-  getLoanProducts: (params?: {
+  getLoanProductsManagement: (params?: {
     loan_type?: string;
     min_amount?: number;
     max_amount?: number;
@@ -268,6 +268,12 @@ export const financierApi = {
     limit?: number;
     skip?: number;
   }) => api.get('/finance/financier/inquiries', { params }),
+
+  getLoanProductsManagement: (params?: {
+    loan_type?: string;
+    min_amount?: number;
+    max_amount?: number;
+  }) => api.get('/finance/loan-products', { params }),
   
   getInquiry: (inquiryId: string) => api.get(`/finance/financier/inquiries/${inquiryId}`),
   
@@ -279,11 +285,7 @@ export const financierApi = {
     preferred_delivery_date?: string;
   }) => api.put(`/finance/financier/inquiries/${inquiryId}`, data),
   
-  cancelInquiry: (inquiryId: string) => api.delete(`/finance/financier/inquiries/${inquiryId}`),
-  
-  // Loan products
-  getLoanProducts: () => api.get('/finance/products'),
-  
+  cancelInquiry: (inquiryId: string) => api.delete(`/finance/financier/inquiries/${inquiryId}`),  
   // Payment history
   getPaymentHistory: (applicationId: number) => api.get(`/finance/applications/${applicationId}/payments`),
   
@@ -294,10 +296,6 @@ export const financierApi = {
   // Analytics data
   getAnalyticsData: (period?: string) => 
     api.get('/finance/financier/analytics', { params: { period } }),
-  
-  // Loan products management
-  getLoanProductsManagement: (status_filter?: string) => 
-    api.get('/finance/financier/loan-products', { params: { status_filter } }),
   
   updateLoanProduct: (id: string, data: any) => 
     api.put(`/finance/financier/loan-products/${id}`, data),
