@@ -41,7 +41,7 @@ const AIFeaturesPage: React.FC = () => {
     }] : [])
   ];
 
-  const getColorClasses = (color: string, isActive: boolean) => {
+  const getColorClasses = (color: string) => {
     const colorMap: { [key: string]: { active: string; inactive: string; bg: string; icon: string } } = {
       emerald: {
         active: 'border-emerald-500 text-emerald-600 bg-emerald-50',
@@ -176,7 +176,7 @@ const AIFeaturesPage: React.FC = () => {
             <nav className="-mb-px flex space-x-8 px-6 py-4" aria-label="Tabs">
               {tabs.map((tab) => {
                 const IconComponent = tab.icon;
-                const colors = getColorClasses(tab.color, activeTab === tab.id);
+                const colors = getColorClasses(tab.color);
                 
                 return (
                   <button
