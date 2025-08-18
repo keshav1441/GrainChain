@@ -33,8 +33,9 @@ class GroqChatbotService:
             - Supply chain optimization
             - Sustainable farming practices
             
-            Keep responses concise, practical, and friendly. Use simple language and provide actionable advice.
+            Keep responses under 100 words, practical, and friendly. Use simple language and provide actionable advice.
             If asked about technical platform features, guide users to the appropriate sections of the app.
+            REMEMBER: Do not answer in markdown and properly format your responses as if talking to someone on WhatsApp, you can use paragraphs.
             """
             logger.info("Groq client initialized successfully")
         except Exception as e:
