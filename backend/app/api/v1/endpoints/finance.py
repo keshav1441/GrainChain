@@ -859,7 +859,22 @@ async def get_loan_products(
                     "approvedCount": 22,
                     "totalDisbursed": 1800000,
                     "createdAt": "2024-02-01T10:00:00Z"
-                }
+                },
+                {
+                "id": "mock3",
+                "name": "Working Capital Loan",
+                "description": "Short-term working capital for operational expenses",
+                "interestRate": 10.5,
+                "minAmount": 25000,
+                "maxAmount": 300000,
+                "tenure": 6,
+                "status": "active",
+                "eligibilityCriteria": ["Valid business registration", "Minimum 1 year operation"],
+                "applicationCount": 38,
+                "approvedCount": 30,
+                "totalDisbursed": 950000,
+                "createdAt": "2024-03-10T10:00:00Z"
+            }
             ]
             # Add mock products to the beginning of the list
             products = mock_products + products
