@@ -2,7 +2,7 @@
 Finance API endpoints for GrainChain
 Handles loan applications, payments, and financial services
 """
-
+import os
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
 import logging
@@ -19,14 +19,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
 
-# Create a sub-router for financier-specific endpoints
-financier_router = APIRouter(prefix="/financier", tags=["financier"])
-
 # Create the main router
 router = APIRouter(prefix="/finance", tags=["finance"])
-
-# Include the financier sub-router
-router.include_router(financier_router)
 
 # Request/Response Models
 class LoanApplicationRequest(BaseModel):
@@ -342,10 +336,6 @@ async def get_payment_history(
     except Exception as e:
         logger.error(f"Error getting payment history: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
-
-
-# This endpoint is now handled by the financier_router
-
 
 @router.get("/payments/{payment_id}", response_model=Payment)
 async def get_payment_details(
@@ -770,7 +760,7 @@ async def get_analytics_data(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
-@financier_router.get("/loan-products")
+@router.get("/loan-products")
 async def get_loan_products(
     status_filter: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -782,40 +772,96 @@ async def get_loan_products(
         if current_user.role != "financier":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         
-        # Mock loan products data (in real app, this would come from database)
-        mock_products = [
-            {
-                "id": "1",
-                "name": "Crop Loan Standard",
-                "description": "Standard crop financing for seasonal farming needs",
-                "interestRate": 8.5,
-                "minAmount": 50000,
-                "maxAmount": 500000,
-                "tenure": 12,
-                "status": "active",
-                "eligibilityCriteria": ["Minimum 2 years farming experience", "Valid land documents"],
-                "applicationCount": 45,
-                "approvedCount": 32,
-                "totalDisbursed": 1250000,
-                "createdAt": "2024-01-15T10:00:00Z"
-            },
-            {
-                "id": "2", 
-                "name": "Equipment Finance",
-                "description": "Financing for agricultural equipment and machinery",
-                "interestRate": 9.2,
-                "minAmount": 100000,
-                "maxAmount": 2000000,
-                "tenure": 36,
-                "status": "active",
-                "eligibilityCriteria": ["Minimum 5 years farming experience", "Equipment quotation required"],
-                "applicationCount": 28,
-                "approvedCount": 22,
-                "totalDisbursed": 1800000,
-                "createdAt": "2024-02-01T10:00:00Z"
-            },
-            {
-                "id": "3",
+        # Build query
+        query = {"financier_id": str(current_user.id)}
+        
+        # Add status filter if provided
+        if status_filter == "active":
+            query["is_active"] = True
+        elif status_filter == "inactive":
+            query["is_active"] = False
+        
+        # Fetch products from database
+        products_cursor = await db.financial_products.find(query).to_list(length=None)
+        products = []
+        
+        # Get loan applications for each product to calculate stats
+        for product in products_cursor:
+            # Get application stats for this product
+            app_stats = await db.loan_applications.aggregate([
+                {"$match": {"product_id": str(product["_id"])}},
+                {"$group": {
+                    "_id": "$status",
+                    "count": {"$sum": 1},
+                    "total_amount": {"$sum": "$loan_amount"}
+                }}
+            ]).to_list(length=None)
+            
+            # Initialize stats
+            application_count = 0
+            approved_count = 0
+            total_disbursed = 0
+            
+            # Calculate stats from aggregation
+            for stat in app_stats:
+                application_count += stat["count"]
+                if stat["_id"] == "approved" or stat["_id"] == "disbursed":
+                    approved_count += stat["count"]
+                    total_disbursed += stat.get("total_amount", 0)
+            
+            # Format product data
+            product_data = {
+                "id": str(product["_id"]),
+                "name": product["product_name"],
+                "description": product.get("description", ""),
+                "interestRate": product["interest_rate_min"],
+                "minAmount": product["min_amount"],
+                "maxAmount": product["max_amount"],
+                "tenure": product["max_tenure_months"],
+                "status": "active" if product.get("is_active", False) else "inactive",
+                "eligibilityCriteria": product.get("eligibility_criteria", []),
+                "applicationCount": application_count,
+                "approvedCount": approved_count,
+                "totalDisbursed": total_disbursed,
+                "createdAt": product["created_at"].isoformat() + "Z" if "created_at" in product else None
+            }
+            products.append(product_data)
+        
+        # Add mock products if no real products found or for testing
+        if not products or os.getenv("ENVIRONMENT") == "development":
+            mock_products = [
+                {
+                    "id": "mock1",
+                    "name": "Crop Loan Standard",
+                    "description": "Standard crop financing for seasonal farming needs",
+                    "interestRate": 8.5,
+                    "minAmount": 50000,
+                    "maxAmount": 500000,
+                    "tenure": 12,
+                    "status": "active",
+                    "eligibilityCriteria": ["Minimum 2 years farming experience", "Valid land documents"],
+                    "applicationCount": 45,
+                    "approvedCount": 32,
+                    "totalDisbursed": 1250000,
+                    "createdAt": "2024-01-15T10:00:00Z"
+                },
+                {
+                    "id": "mock2", 
+                    "name": "Equipment Finance",
+                    "description": "Financing for agricultural equipment and machinery",
+                    "interestRate": 9.2,
+                    "minAmount": 100000,
+                    "maxAmount": 2000000,
+                    "tenure": 36,
+                    "status": "active",
+                    "eligibilityCriteria": ["Minimum 5 years farming experience", "Equipment quotation required"],
+                    "applicationCount": 28,
+                    "approvedCount": 22,
+                    "totalDisbursed": 1800000,
+                    "createdAt": "2024-02-01T10:00:00Z"
+                },
+                {
+                "id": "mock3",
                 "name": "Working Capital Loan",
                 "description": "Short-term working capital for operational expenses",
                 "interestRate": 10.5,
@@ -829,26 +875,25 @@ async def get_loan_products(
                 "totalDisbursed": 950000,
                 "createdAt": "2024-03-10T10:00:00Z"
             }
-        ]
-        
-        # Filter by status if provided
-        if status_filter:
-            mock_products = [p for p in mock_products if p["status"] == status_filter]
+            ]
+            # Add mock products to the beginning of the list
+            products = mock_products + products
         
         # Calculate summary stats
-        total_products = len(mock_products)
-        active_products = len([p for p in mock_products if p["status"] == "active"])
-        avg_interest_rate = sum(p["interestRate"] for p in mock_products) / len(mock_products) if mock_products else 0
-        total_capacity = sum(p["maxAmount"] for p in mock_products)
+        total_products = len(products)
+        active_products = len([p for p in products if p.get("status") == "active"])
+        avg_interest_rate = sum(p.get("interestRate", 0) for p in products) / len(products) if products else 0
+        total_capacity = sum(p.get("maxAmount", 0) for p in products)
         
         return {
-            "products": mock_products,
+            "products": products,
             "stats": {
                 "totalProducts": total_products,
                 "activeProducts": active_products,
-                "avgInterestRate": avg_interest_rate,
+                "avgInterestRate": round(avg_interest_rate, 2),
                 "totalCapacity": total_capacity
-            }
+            },
+            "isMockData": len(products) > 0 and any(p.get("id", "").startswith("mock") for p in products)
         }
         
     except HTTPException:
@@ -856,8 +901,6 @@ async def get_loan_products(
     except Exception as e:
         logger.error(f"Error getting loan products: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
-
-
 class FinancialProductRequest(BaseModel):
     product_name: str
     product_type: str

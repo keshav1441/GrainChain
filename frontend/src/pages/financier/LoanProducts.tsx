@@ -16,27 +16,21 @@ import { Button } from '../../components/ui/Button';
 
 interface FinancialProduct {
   id: string;
-  product_name: string;
-  product_type: string;
+  name: string;
   description: string;
-  min_amount: number;
-  max_amount: number;
-  min_tenure_months: number;
-  max_tenure_months: number;
-  interest_rate_min: number;
-  interest_rate_max: number;
-  processing_fee_percentage: number;
-  min_farm_size?: number;
-  min_experience_years?: number;
-  min_annual_income?: number;
-  eligible_states: string[];
-  eligible_crops: string[];
-  min_credit_score?: number;
-  is_active: boolean;
-  is_featured: boolean;
-  created_at: string;
-  updated_at: string;
-  // Status is determined by is_active
+  interestRate: number;
+  minAmount: number;
+  maxAmount: number;
+  tenure: number;
+  status: string;
+  eligibilityCriteria: string[];
+  applicationCount: number;
+  approvedCount: number;
+  totalDisbursed: number;
+  createdAt: string;
+  // Computed fields for display
+  is_active?: boolean;
+  is_featured?: boolean;
 }
 
 export const LoanProducts: React.FC = () => {
@@ -49,7 +43,11 @@ export const LoanProducts: React.FC = () => {
     try {
       setLoading(true);
       const response = await financierApi.getLoanProductsManagement();
-      setProducts(response.data || []);
+      console.log('API Response:', response);
+      // The API returns products in response.data.products
+      const productsData = response.data?.products || [];
+      console.log('Products data:', productsData);
+      setProducts(productsData);
     } catch (error) {
       console.error('Error fetching financial products:', error);
       toast.error('Failed to load financial products');
@@ -67,7 +65,10 @@ export const LoanProducts: React.FC = () => {
       // In real implementation, this would call an API
       setProducts(prev => prev.map(product => 
         product.id === productId 
-          ? { ...product, is_active: !product.is_active }
+          ? { 
+              ...product, 
+              status: product.status === 'active' ? 'inactive' : 'active' 
+            }
           : product
       ));
       toast.success('Product status updated successfully');
@@ -159,7 +160,7 @@ export const LoanProducts: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Active Products</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {products.filter(p => p.is_active).length}
+                  {products.filter(p => p.status === 'active').length}
                 </p>
               </div>
             </div>
@@ -174,7 +175,7 @@ export const LoanProducts: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Avg Interest Rate</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {((products.reduce((sum, p) => sum + (p.interest_rate_min + p.interest_rate_max) / 2, 0) / products.length).toFixed(1))|| 2.5}%
+                  {products.length > 0 ? products.reduce((sum, p) => sum + p.interestRate, 0) / products.length : 0}%
                 </p>
               </div>
             </div>
@@ -188,7 +189,7 @@ export const LoanProducts: React.FC = () => {
                 <p className="text-sm font-medium text-gray-500">Avg Tenure</p>
                 <p className="text-2xl font-semibold text-gray-900">
                   {products.length > 0 
-                    ? Math.round(products.reduce((sum, p) => sum + (p.min_tenure_months + p.max_tenure_months) / 2, 0) / products.length) 
+                    ? Math.round(products.reduce((sum, p) => sum + p.tenure, 0) / products.length) 
                     : '0'} months
                 </p>
               </div>
@@ -223,92 +224,73 @@ export const LoanProducts: React.FC = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-medium text-gray-900">{product.product_name}</h3>
-                        {getStatusBadge(product.is_active)}
+                        <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
+                        {getStatusBadge(product.status === 'active')}
                       </div>
                       <p className="text-sm text-gray-600 mb-2">{product.description}</p>
                       <div className="mt-4 grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Product Type</p>
-                          <p className="text-sm text-gray-900 capitalize">{product.product_type}</p>
-                        </div>
-                        <div>
                           <p className="text-sm font-medium text-gray-500">Amount Range</p>
                           <p className="text-sm text-gray-900">
-                            {formatCurrency(product.min_amount)} - {formatCurrency(product.max_amount)}
+                            {formatCurrency(product.minAmount)} - {formatCurrency(product.maxAmount)}
                           </p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-500">Interest Rate</p>
                           <p className="text-sm text-gray-900">
-                            {product.interest_rate_min}% - {product.interest_rate_max}%
+                            {product.interestRate}%
                           </p>
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-500">Tenure</p>
                           <p className="text-sm text-gray-900">
-                            {product.min_tenure_months} - {product.max_tenure_months} months
+                            {product.tenure} months
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Processing Fee</p>
-                          <p className="text-sm text-gray-900">{product.processing_fee_percentage}%</p>
+                          <p className="text-sm font-medium text-gray-500">Applications</p>
+                          <p className="text-sm text-gray-900">
+                            {product.applicationCount} ({product.approvedCount} approved)
+                          </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-500">Featured</p>
-                          <p className="text-sm text-gray-900">{product.is_featured ? 'Yes' : 'No'}</p>
+                          <p className="text-sm font-medium text-gray-500">Total Disbursed</p>
+                          <p className="text-sm text-gray-900">
+                            {formatCurrency(product.totalDisbursed)}
+                          </p>
                         </div>
                       </div>
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-500 mb-2">Eligibility</h4>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          {product.min_farm_size && (
-                            <div className="flex items-center">
-                              <span className="text-gray-500">Min Farm Size:</span>
-                              <span className="ml-2 text-gray-700">{product.min_farm_size} acres</span>
-                            </div>
-                          )}
-                          {product.min_experience_years && (
-                            <div className="flex items-center">
-                              <span className="text-gray-500">Min Experience:</span>
-                              <span className="ml-2 text-gray-700">{product.min_experience_years} years</span>
-                            </div>
-                          )}
-                          {product.min_annual_income && (
-                            <div className="flex items-center">
-                              <span className="text-gray-500">Min Annual Income:</span>
-                              <span className="ml-2 text-gray-700">{formatCurrency(product.min_annual_income)}</span>
-                            </div>
-                          )}
-                          {product.min_credit_score && (
-                            <div className="flex items-center">
-                              <span className="text-gray-500">Min Credit Score:</span>
-                              <span className="ml-2 text-gray-700">{product.min_credit_score}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-4 flex justify-between items-center text-xs text-gray-500">
-                        <span>Created: {formatDate(product.created_at)}</span>
-                        <span>Updated: {formatDate(product.updated_at)}</span>
-                      </div>
-                      {(product.eligible_states?.length > 0 || product.eligible_crops?.length > 0) && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <h4 className="text-xs font-medium text-gray-500 mb-1">Eligible For:</h4>
-                          <div className="flex flex-wrap gap-1">
-                            {product.eligible_states?.map((state, idx) => (
-                              <span key={`state-${idx}`} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                {state}
-                              </span>
+                      {product.eligibilityCriteria && product.eligibilityCriteria.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium text-gray-500 mb-2">Eligibility Criteria</h4>
+                          <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                            {product.eligibilityCriteria.map((criteria, idx) => (
+                              <li key={`criteria-${idx}`}>{criteria}</li>
                             ))}
-                            {product.eligible_crops?.map((crop, idx) => (
-                              <span key={`crop-${idx}`} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                {crop}
-                              </span>
-                            ))}
-                          </div>
+                          </ul>
                         </div>
                       )}
+                      <div className="mt-4 flex justify-between items-center text-xs text-gray-500">
+                        <span>Created: {formatDate(product.createdAt)}</span>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => setEditingProduct(product)}
+                            className="text-primary-600 hover:text-primary-800"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => toggleProductStatus(product.id)}
+                            className={`px-2 py-1 rounded text-xs ${
+                              product.status === 'active'
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            }`}
+                          >
+                            {product.status === 'active' ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="flex space-x-2">
