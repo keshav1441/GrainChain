@@ -183,6 +183,26 @@ export const uploadApi = {
   },
 };
 
+// Farmer API endpoints
+export const farmerApi = {
+  // Get inquiries for farmer's listings
+  getInquiries: (params?: {
+    status?: string;
+    limit?: number;
+    skip?: number;
+  }) => api.get('/inquiries/farmer', { params }),
+  
+  // Get inquiry by ID
+  getInquiry: (inquiryId: string) => api.get(`/inquiries/farmer/${inquiryId}`),
+  
+  // Respond to an inquiry
+  respondToInquiry: (inquiryId: string, data: {
+    status: 'accepted' | 'rejected' | 'counter_offer';
+    message?: string;
+    counter_price?: number;
+  }) => api.put(`/inquiries/farmer/${inquiryId}/respond`, data),
+};
+
 // Buyer API endpoints
 export const buyerApi = {
   getDashboardStats: () => api.get('/buyer/dashboard/stats'),

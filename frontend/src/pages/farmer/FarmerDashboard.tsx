@@ -9,7 +9,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/Button';
-import { cropApi } from '../../services/api';
+import { cropApi, farmerApi } from '../../services/api';
 
 interface CropListing {
   id: string;
@@ -20,9 +20,23 @@ interface CropListing {
   // Add other relevant fields if needed
 }
 
+interface Inquiry {
+  id: string;
+  buyer_name: string;
+  crop_name: string;
+  quantity_requested: number;
+  proposed_price: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'counter_offer';
+  created_at: string;
+  message?: string;
+  listing_id: string;
+}
+
 export const FarmerDashboard: React.FC = () => {
   const [listings, setListings] = useState<CropListing[]>([]);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inquiriesLoading, setInquiriesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Stats data
@@ -30,7 +44,7 @@ export const FarmerDashboard: React.FC = () => {
     { name: 'Active Listings', value: listings.filter(l => l.status === 'available').length, icon: ChartBarIcon },
     { name: 'Total Revenue', value: '₹0', icon: CurrencyDollarIcon },
     { name: 'Pending Orders', value: '0', icon: TruckIcon },
-    { name: 'New Inquiries', value: '0', icon: BellIcon },
+    { name: 'New Inquiries', value: inquiries.filter(i => i.status === 'pending').length, icon: BellIcon },
   ];
 
   useEffect(() => {
@@ -47,7 +61,20 @@ export const FarmerDashboard: React.FC = () => {
       }
     };
 
+    const fetchInquiries = async () => {
+      try {
+        setInquiriesLoading(true);
+        const response = await farmerApi.getInquiries({ limit: 5 });
+        setInquiries(response.data);
+      } catch (err) {
+        console.error('Failed to fetch inquiries:', err);
+      } finally {
+        setInquiriesLoading(false);
+      }
+    };
+
     fetchListings();
+    fetchInquiries();
   }, []);
 
   return (
@@ -164,23 +191,64 @@ export const FarmerDashboard: React.FC = () => {
                   View all
                 </Link>
               </div>
-              <div className="text-center py-8">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1}
-                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                  />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No inquiries</h3>
-                <p className="mt-1 text-sm text-gray-500">You don't have any inquiries yet. Check back later!</p>
+              <div className="flow-root">
+                {inquiriesLoading ? (
+                  <p>Loading inquiries...</p>
+                ) : inquiries.length > 0 ? (
+                  <ul className="divide-y divide-gray-200">
+                    {inquiries.map((inquiry) => (
+                      <li key={inquiry.id} className="py-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {inquiry.buyer_name} - {inquiry.crop_name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {inquiry.quantity_requested} kg • ₹{inquiry.proposed_price}/kg
+                            </p>
+                            {inquiry.message && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                "{inquiry.message}"
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                inquiry.status === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : inquiry.status === 'accepted'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
+                            >
+                              {inquiry.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-center py-8">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1}
+                        d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                      />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No inquiries</h3>
+                    <p className="mt-1 text-sm text-gray-500">You don't have any inquiries yet. Check back later!</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
