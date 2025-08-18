@@ -21,7 +21,7 @@ class CropGrade(str, enum.Enum):
     STANDARD = "standard"
 
 class ListingStatus(str, enum.Enum):
-    ACTIVE = "active"
+    ACTIVE = "available"
     SOLD = "sold"
     EXPIRED = "expired"
     DRAFT = "draft"

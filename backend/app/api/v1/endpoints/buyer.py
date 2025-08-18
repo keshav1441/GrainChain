@@ -1,12 +1,16 @@
+import logging
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
+# Set up logging
+logger = logging.getLogger(__name__)
+
 from app.core.database import get_db, get_collection
 from app.models.user import User, Buyer
-from app.models.crop import CropListing, Inquiry, InquiryStatus, CropCategory, ListingStatus
+from app.models.crop import CropListing, Inquiry, InquiryStatus, CropCategory, ListingStatus, CropGrade
 from app.schemas.crop import (
     CropListingResponse, InquiryCreate, InquiryResponse, 
     CropSearchFilters, InquiryUpdate
@@ -153,8 +157,8 @@ async def search_crop_listings(
     Search and filter crop listings for buyers.
     Returns paginated results with sorting options.
     """
-    # Build MongoDB query
-    query = {"status": ListingStatus.ACTIVE.value}
+    # Build MongoDB query - only active listings by default
+    query = {"status": "available"}
     
     # Add search filters
     if crop_name:
@@ -206,33 +210,95 @@ async def search_crop_listings(
     if location_match:
         pipeline.append({"$match": location_match})
     
-    # Add sorting
-    sort_direction = 1 if sort_order.lower() == "asc" else -1
-    valid_sort_fields = ["created_at", "price_per_kg", "quantity_available", "updated_at"]
-    if sort_by not in valid_sort_fields:
-        sort_by = "created_at"
+    # Execute query with pagination and sorting
+    sort_order = 1 if sort_order == "asc" else -1
+    sort_field = sort_by if sort_by in ["created_at", "price_per_kg", "quantity_available"] else "created_at"
     
-    pipeline.extend([
-        {"$sort": {sort_by: sort_direction}},
-        {"$skip": skip},
-        {"$limit": limit}
-    ])
+    # For dashboard, always sort by created_at in descending order
+    if skip == 0 and limit == 3 and sort_field == "created_at" and sort_order == -1:
+        cursor = (
+            db["crop_listings"]
+            .find(query)
+            .sort("created_at", -1)
+            .limit(limit)
+        )
+    else:
+        cursor = (
+            db["crop_listings"]
+            .find(query)
+            .sort([(sort_field, sort_order)])
+            .skip(skip)
+            .limit(limit)
+        )
     
     # Execute aggregation
-    listings_collection = get_collection("crop_listings")
-    cursor = listings_collection.aggregate(pipeline)
     results = await cursor.to_list(length=limit)
     
     # Convert to response format
     listings = []
     for result in results:
-        # Convert ObjectIds to strings
-        result["_id"] = str(result["_id"])
-        result["farmer_id"] = str(result["farmer_id"])
-        
-        # Create CropListing object
-        listing = CropListing(**result)
-        listings.append(CropListingResponse.model_validate(listing))
+        try:
+            # Transform the document to match CropListing model
+            listing_data = {
+                "_id": str(result["_id"]),
+                "farmer_id": str(result["farmer_id"]),
+                "farmer_name": result.get("farmer_name", "Unknown Farmer"),
+                "crop_name": result.get("crop_type", "Unnamed Crop"),
+                "title": result.get("title", result.get("crop_name", "Crop Listing")),
+                "category": CropCategory(result.get("category", "cereals")),  # Default to 'cereals' if not specified
+                "variety": result.get("variety"),
+                "quantity_available": result.get("quantity_available", 0),
+                "price_per_kg": result.get("price_per_kg", 0),
+                "grade": result.get("grade"),
+                "location": result.get("location", ""),
+                "pickup_location": result.get("pickup_location", result.get("location", "")),  # Use location as fallback
+                "harvest_date": result.get("harvest_date"),
+                "description": result.get("description", ""),
+                "images": result.get("images", []),
+                "certifications": result.get("certifications", []),
+                "storage_location": result.get("storage_location"),
+                "status": result.get("status", "available"),
+                "created_at": result.get("created_at", datetime.utcnow()),
+                "updated_at": result.get("updated_at", datetime.utcnow())
+            }
+            
+            # Create CropListing object and convert to dict for response
+            listing = CropListing(**listing_data)
+            # Convert to dict and include all fields
+            listing_dict = listing.model_dump(by_alias=True)
+            # Ensure all required fields for CropListingResponse are present
+            response_data = {
+                # Required fields from CropListingBase
+                "crop_name": listing_dict.get("crop_name", ""),
+                "category": listing_dict.get("category", "cereals"),
+                "variety": listing_dict.get("variety"),
+                "quantity_available": listing_dict.get("quantity_available", 0),
+                "price_per_kg": listing_dict.get("price_per_kg", 0),
+                "location": listing_dict.get("location", ""),
+                "harvest_date": listing_dict.get("harvest_date"),
+                "description": listing_dict.get("description", ""),
+                "images": listing_dict.get("images", []),
+                "certifications": listing_dict.get("certifications", []),
+                "storage_location": listing_dict.get("storage_location"),
+                
+                # Required fields from CropListingResponse
+                "_id": str(listing_dict.get("_id", "")),
+                "farmer_id": str(listing_dict.get("farmer_id", "")),
+                "status": listing_dict.get("status", ListingStatus.ACTIVE.value),  
+                "created_at": listing_dict.get("created_at", datetime.utcnow()),
+                "updated_at": listing_dict.get("updated_at", datetime.utcnow()),
+                
+                # Additional fields
+                "farmer": {
+                    "id": str(listing_dict.get("farmer_id", "")),
+                    "name": listing_dict.get("farmer_name", "Unknown Farmer")
+                }
+            }
+            listings.append(response_data)
+            
+        except Exception as e:
+            logger.error(f"Error processing listing {result.get('_id')}: {str(e)}")
+            continue  # Skip this listing if there's an error
     
     return listings
 

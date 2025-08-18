@@ -68,11 +68,22 @@ export const BuyerDashboard: React.FC = () => {
         setLoading(true);
         console.log('Fetching dashboard data...');
         
-        // Try to fetch listings separately first to debug
-        console.log('Fetching listings...');
-        const listingsResponse = await buyerApi.getListings({ limit: 3, sort_by: 'created_at', sort_order: 'desc' });
+        // Fetch latest 3 active listings
+        console.log('Fetching latest listings...');
+        const listingsResponse = await buyerApi.getListings({ 
+          limit: 3, 
+          sort_by: 'created_at', 
+          sort_order: 'desc',
+          status: 'available'  // Ensure we only get available listings
+        });
         console.log('Listings response:', listingsResponse);
-        console.log('Listings data:', listingsResponse.data);
+        
+        // Handle both direct array response and data property
+        const listingsData = Array.isArray(listingsResponse) 
+          ? listingsResponse 
+          : (listingsResponse?.data || []);
+          
+        console.log('Processed listings data:', listingsData);
         
         // Fetch dashboard stats
         const statsResponse = await buyerApi.getDashboardStats().catch(() => ({
@@ -134,8 +145,8 @@ export const BuyerDashboard: React.FC = () => {
           active_farmers: statsResponse.data?.active_farmers || 0
         });
         
-        // Set listings with fallback
-        setListings(Array.isArray(listingsResponse?.data) ? listingsResponse.data : []);
+        // Set the listings
+        setListings(listingsData);
         
         // Set inquiries from API response
         setRecentInquiries(Array.isArray(inquiriesResponse) ? inquiriesResponse : []);
@@ -365,18 +376,15 @@ export const BuyerDashboard: React.FC = () => {
                               </p>
                             </div>
                             <div className="flex space-x-2">
-                              <Link to={`/buyer/listings/${listing._id}`} className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                              <Link to={`/marketplace/${listing._id}`}className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                                 View Details
                               </Link>
-                              <button 
+                              <Link 
+                                to={`/marketplace/${listing._id}`}
                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                onClick={() => {
-                                  // Handle inquiry creation
-                                  console.log('Send inquiry for listing:', listing._id);
-                                }}
                               >
                                 Send Inquiry
-                              </button>
+                              </Link>
                             </div>
                           </div>
                         </div>
