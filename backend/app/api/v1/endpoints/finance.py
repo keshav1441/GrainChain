@@ -6,7 +6,7 @@ Handles loan applications, payments, and financial services
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Dict, Any, Optional
 import logging
-
+from datetime import datetime
 from ....core.finance_service import finance_service
 from ....api.deps import get_current_user, get_db
 from ....core.database import get_collection
@@ -19,7 +19,14 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+# Create a sub-router for financier-specific endpoints
+financier_router = APIRouter(prefix="/financier", tags=["financier"])
+
+# Create the main router
+router = APIRouter(prefix="/finance", tags=["finance"])
+
+# Include the financier sub-router
+router.include_router(financier_router)
 
 # Request/Response Models
 class LoanApplicationRequest(BaseModel):
@@ -337,11 +344,8 @@ async def get_payment_history(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
-@router.get("/loan-products", response_model=List[LoanProduct])
-async def get_loan_products(db=Depends(get_db)):
-    """Get all available loan products"""
-    products_cursor = db.financial_products.find({"is_active": True})
-    return [LoanProduct(**p) async for p in products_cursor]
+# This endpoint is now handled by the financier_router
+
 
 @router.get("/payments/{payment_id}", response_model=Payment)
 async def get_payment_details(
@@ -766,10 +770,11 @@ async def get_analytics_data(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
-@router.get("/financier/loan-products")
+@financier_router.get("/loan-products")
 async def get_loan_products(
     status_filter: Optional[str] = None,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db=Depends(get_db)
 ):
     """Get loan products for financier management"""
     try:

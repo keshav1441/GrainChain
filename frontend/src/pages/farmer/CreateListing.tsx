@@ -81,7 +81,10 @@ export const CreateListing: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
-    // TODO: Handle image uploads separately, e.g., get URLs before submitting
+    // Format harvest date to ISO string with time component
+    const formattedHarvestDate = formData.harvestDate 
+      ? new Date(formData.harvestDate).toISOString()
+      : null;
 
     const listingData = {
       crop_type: formData.cropType,
@@ -89,7 +92,7 @@ export const CreateListing: React.FC = () => {
       price_per_kg: formData.pricePerUnit,
       location: formData.location,
       description: formData.description,
-      harvest_date: formData.harvestDate,
+      harvest_date: formattedHarvestDate,
       certifications: formData.organicCertified ? ['organic'] : [],
       // Additional fields from form that might need to be added to backend
       variety: formData.variety,
