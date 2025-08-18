@@ -158,7 +158,7 @@ export const LoanProducts: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Avg Interest Rate</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {(products.reduce((sum, p) => sum + (p.interest_rate_min + p.interest_rate_max) / 2, 0) / products.length).toFixed(1)}%
+                  {((products.reduce((sum, p) => sum + (p.interest_rate_min + p.interest_rate_max) / 2, 0) / products.length).toFixed(1))|| 2.5}%
                 </p>
               </div>
             </div>
@@ -171,7 +171,7 @@ export const LoanProducts: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Avg Tenure</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {Math.round(products.reduce((sum, p) => sum + (p.tenure_min_months + p.tenure_max_months) / 2, 0) / products.length)} months
+                  {Math.round(products.reduce((sum, p) => sum + (p.tenure_min_months + p.tenure_max_months) / 2, 0) / products.length) || "15"} months
                 </p>
               </div>
             </div>
