@@ -5,8 +5,6 @@ import {
   ArrowLeftIcon,
   UserIcon,
   MapPinIcon,
-  PhoneIcon,
-  EnvelopeIcon,
   CameraIcon,
   DocumentTextIcon,
   CheckCircleIcon,

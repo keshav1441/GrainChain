@@ -18,10 +18,7 @@ export const RegisterPage: React.FC = () => {
     register,
     handleSubmit,
     formState: { errors },
-    watch,
   } = useForm<RegisterData>();
-
-  const password = watch('password');
 
   const onSubmit = async (data: RegisterData) => {
     try {

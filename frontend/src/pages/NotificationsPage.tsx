@@ -60,20 +60,20 @@ export const NotificationsPage: React.FC = () => {
     }
   };
 
-  const getPriorityColor = (priority: Notification['priority']) => {
-    switch (priority) {
-      case 'urgent':
-        return 'border-l-red-500 bg-red-50';
-      case 'high':
-        return 'border-l-orange-500 bg-orange-50';
-      case 'medium':
-        return 'border-l-blue-500 bg-blue-50';
-      case 'low':
-        return 'border-l-gray-500 bg-gray-50';
-      default:
-        return 'border-l-gray-500 bg-gray-50';
-    }
-  };
+  // const getPriorityColor = (priority: Notification['priority']) => {
+  //   switch (priority) {
+  //     case 'urgent':
+  //       return 'border-l-red-500 bg-red-50';
+  //     case 'high':
+  //       return 'border-l-orange-500 bg-orange-50';
+  //     case 'medium':
+  //       return 'border-l-blue-500 bg-blue-50';
+  //     case 'low':
+  //       return 'border-l-gray-500 bg-gray-50';
+  //     default:
+  //       return 'border-l-gray-500 bg-gray-50';
+  //   }
+  // };
 
   const formatTimestamp = (timestamp: Date) => {
     const date = new Date(timestamp);

@@ -4,7 +4,6 @@ import {
   CreditCardIcon, 
   ClockIcon,
   CheckCircleIcon,
-  XCircleIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/outline';
 import PaymentModal from './PaymentModal';
@@ -45,6 +44,7 @@ const BuyerPayments: React.FC<BuyerPaymentsProps> = ({ buyerId }) => {
       // Fetch recent transactions
       const transactions = await paymentService.getPaymentHistory(20);
       setRecentTransactions(transactions);
+      console.log(recentTransactions)
       
       // Mock pending orders - would be replaced with actual API call
       const mockOrders: PendingOrder[] = [

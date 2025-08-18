@@ -27,11 +27,6 @@ interface VerificationDocuments {
   company_id_docs?: File[];
 }
 
-interface UploadedDocument {
-  file_url: string;
-  document_type: string;
-}
-
 export const VerificationModal: React.FC<VerificationModalProps> = ({
   isOpen,
   onClose,
@@ -107,7 +102,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
     try {
       if (!user) throw new Error('User not found');
 
-      const uploadedDocs: { [key: string]: string } = {};
+      const uploadedDocs: { [key: string]: string | string[] } = {};
 
       // Upload all documents
       for (const [docType, file] of Object.entries(documents)) {
@@ -126,23 +121,23 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
 
       // Submit verification based on user role
       let endpoint = '';
-      let submitData = {};
+      let submitData: { [key: string]: string | string[] | undefined } = {};
 
       if (user.role === 'farmer') {
         endpoint = 'http://localhost:8000/api/v1/users/verification/farmer/submit';
         submitData = {
-          land_ownership_doc: uploadedDocs.land_ownership_doc,
-          land_photo_with_farmer: uploadedDocs.land_photo_with_farmer,
-          address_proof: uploadedDocs.address_proof,
-          aadhar_card: uploadedDocs.aadhar_card,
-          pan_card: uploadedDocs.pan_card,
+          land_ownership_doc: uploadedDocs.land_ownership_doc as string,
+          land_photo_with_farmer: uploadedDocs.land_photo_with_farmer as string,
+          address_proof: uploadedDocs.address_proof as string,
+          aadhar_card: uploadedDocs.aadhar_card as string,
+          pan_card: uploadedDocs.pan_card as string,
         };
       } else if (user.role === 'financier') {
         endpoint = 'http://localhost:8000/api/v1/users/verification/financier/submit';
         submitData = {
-          aadhar_card: uploadedDocs.aadhar_card,
-          pan_card: uploadedDocs.pan_card,
-          company_id_docs: uploadedDocs.company_id_docs || [],
+          aadhar_card: uploadedDocs.aadhar_card as string,
+          pan_card: uploadedDocs.pan_card as string,
+          company_id_docs: uploadedDocs.company_id_docs as string[] || [],
         };
       } else {
         throw new Error('Buyers do not require verification');
@@ -345,6 +340,27 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
     );
   };
 
+  // Show upload progress when uploading
+  const renderUploadProgress = () => {
+    const activeUploads = Object.entries(uploadProgress).filter(([, isUploading]) => isUploading);
+    
+    if (activeUploads.length === 0) return null;
+
+    return (
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <h4 className="text-sm font-medium text-blue-900 mb-2">Uploading Documents...</h4>
+        <div className="space-y-1">
+          {activeUploads.map(([docType]) => (
+            <div key={docType} className="flex items-center space-x-2">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+              <span className="text-xs text-blue-700 capitalize">{docType.replace(/_/g, ' ')}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (!user) return null;
 
   // If user is buyer, show message that verification is not required
@@ -405,6 +421,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
           </div>
         )}
 
+        {renderUploadProgress()}
         {renderVerificationStatus()}
 
         {verificationStatus?.status === 'not_submitted' && (

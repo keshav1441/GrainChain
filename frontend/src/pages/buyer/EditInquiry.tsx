@@ -33,6 +33,14 @@ interface FormData {
   preferred_delivery_date: string;
 }
 
+interface FormErrors {
+  quantity_requested?: string;
+  proposed_price?: string;
+  message?: string;
+  delivery_location?: string;
+  preferred_delivery_date?: string;
+}
+
 export const EditInquiry: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -47,7 +55,7 @@ export const EditInquiry: React.FC = () => {
     delivery_location: '',
     preferred_delivery_date: '',
   });
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
     if (!id) {
@@ -93,13 +101,13 @@ export const EditInquiry: React.FC = () => {
     }));
 
     // Clear error when user starts typing
-    if (errors[name as keyof FormData]) {
+    if (errors[name as keyof FormErrors]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
   const validateForm = () => {
-    const newErrors: Partial<FormData> = {};
+    const newErrors: FormErrors = {};
 
     if (!formData.quantity_requested || formData.quantity_requested <= 0) {
       newErrors.quantity_requested = 'Quantity must be greater than 0';

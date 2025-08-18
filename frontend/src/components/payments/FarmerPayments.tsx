@@ -3,9 +3,7 @@ import {
   BanknotesIcon, 
   DocumentTextIcon, 
   CreditCardIcon,
-  ArrowTrendingUpIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 import PaymentModal from './PaymentModal';
 import { paymentService, LoanApplication, LoanEligibility } from '../../services/paymentService';

@@ -196,11 +196,10 @@ const CheckoutPage: React.FC = () => {
           });
           payment = paymentResponse.data;
           
-          // Verify net banking payment
+          // Verify net banking payment - removed bank_ref_id as it's not in the type definition
           await paymentApi.verifyNetBankingPayment({
             payment_id: payment.payment_id,
-            bank_transaction_id: `nb_${Date.now()}`,
-            bank_ref_id: `nbref_${Date.now()}`
+            bank_transaction_id: `nb_${Date.now()}`
           });
           
           paymentMethodName = 'Net Banking';
