@@ -33,7 +33,17 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
   const [location, setLocation] = useState('');
   const [farmSize, setFarmSize] = useState<number>(1);
   const [budget, setBudget] = useState<number>(50000);
-  const [recommendations, setRecommendations] = useState<any>(null);
+  interface RecommendationData {
+    reasoning?: string | string[]; // Can be either string or array of strings
+    confidence_score?: number;
+    risk_level?: string;
+    recommendations?: string[];
+    expected_roi?: string | number;
+    data_source?: string;
+    // Add any other properties that might be returned
+  }
+
+  const [recommendations, setRecommendations] = useState<RecommendationData | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleGetRecommendations = async () => {
@@ -201,7 +211,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                   Top Recommendations
                 </h5>
                 <div className="space-y-2">
-                  {recommendations.recommendations.map((rec: string, index: number) => (
+                  {recommendations.recommendations?.map((rec: string, index: number) => (
                     <div
                       key={index}
                       className="flex items-center p-3 bg-white rounded-lg border border-yellow-200"
@@ -234,14 +244,22 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             <div>
               <h5 className="font-semibold text-gray-900 mb-3">AI Analysis & Reasoning</h5>
               <div className="bg-white rounded-lg p-4 border border-gray-200">
-                <ul className="space-y-2">
-                  {recommendations.reasoning.map((reason: string, index: number) => (
-                    <li key={index} className="flex items-start">
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                      <span className="text-gray-700 text-sm">{reason}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="space-y-2">
+                  {typeof recommendations?.reasoning === 'string' ? (
+                    <p className="text-gray-700 text-sm">{recommendations.reasoning}</p>
+                  ) : Array.isArray(recommendations?.reasoning) ? (
+                    <ul className="space-y-2">
+                      {recommendations.reasoning.map((reason: string, index: number) => (
+                        <li key={index} className="flex items-start">
+                          <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                          <span className="text-gray-700 text-sm">{reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-gray-500 text-sm">No reasoning available</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
