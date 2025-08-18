@@ -58,7 +58,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Determine if product is out of stock
   const isOutOfStock = listing.quantity === 0;

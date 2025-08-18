@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, buyer, crops, users,orders, ai_ml, finance, inquiries, cart, payments, notifications, chatbot
+from app.api.v1.endpoints import auth, buyer, crops, users, orders, ai_ml, finance, inquiries, cart, payments, notifications, chatbot
 
 api_router = APIRouter()
 
@@ -28,9 +28,15 @@ api_router.include_router(chatbot.router, prefix="/chatbot", tags=["chatbot"])
 # Note: cart endpoints already include the "/cart" prefix in their route definitions
 api_router.include_router(cart.router, tags=["cart"])
 
+# Include inquiries routes
+api_router.include_router(inquiries.router, prefix="/inquiries", tags=["inquiries"])
+
 # Include payment routes
 api_router.include_router(payments.router, tags=["payments"])# Include notifications routes
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+
+# Include buyer routes
+api_router.include_router(buyer.router, prefix="/buyer", tags=["buyer"])
 
 
 # Health check endpoint

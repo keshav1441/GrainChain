@@ -5,9 +5,7 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   CheckCircleIcon,
-  ClockIcon,
-  ExclamationTriangleIcon,
-  CurrencyDollarIcon
+  ClockIcon
 } from '@heroicons/react/24/outline';
 import PaymentModal from './PaymentModal';
 import { paymentService, LoanApplication } from '../../services/paymentService';

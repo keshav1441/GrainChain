@@ -16,7 +16,20 @@ interface RecommendationCardProps {
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
   userRole = 'farmer'
 }) => {
-  const [recommendationType, setRecommendationType] = useState<'crop' | 'buyer' | 'financier'>('crop');
+  // Set default recommendation type based on user role
+  const getDefaultRecommendationType = (role: string): 'crop' | 'buyer' | 'financier' => {
+    switch(role) {
+      case 'buyer': return 'buyer';
+      case 'financier': return 'financier';
+      case 'farmer':
+      default: 
+        return 'crop';
+    }
+  };
+
+  const [recommendationType, setRecommendationType] = useState<'crop' | 'buyer' | 'financier'>(
+    getDefaultRecommendationType(userRole) as 'crop' | 'buyer' | 'financier'
+  );
   const [location, setLocation] = useState('');
   const [farmSize, setFarmSize] = useState<number>(1);
   const [budget, setBudget] = useState<number>(50000);
@@ -31,12 +44,24 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
 
     setLoading(true);
     try {
-      const result = await aiService.getRecommendations({
+      // Prepare request data based on user role and recommendation type
+      const requestData: any = {
         recommendation_type: recommendationType,
+        user_role: userRole,
         location,
-        farm_size: farmSize,
-        budget
-      });
+      };
+
+      // Only include farm_size for farmer role
+      if (userRole === 'farmer') {
+        requestData.farm_size = farmSize;
+      }
+
+      // Include budget for financier role
+      if (userRole === 'financier') {
+        requestData.budget = budget;
+      }
+
+      const result = await aiService.getRecommendations(requestData);
       setRecommendations(result);
       toast.success('AI recommendations generated successfully!');
     } catch (error) {
@@ -70,9 +95,16 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             onChange={(e) => setRecommendationType(e.target.value as 'crop' | 'buyer' | 'financier')}
             className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500"
           >
-            <option value="crop">Crop Recommendations</option>
-            <option value="buyer">Buyer/Supplier Recommendations</option>
-            <option value="financier">Investment Opportunities</option>
+            {userRole === 'farmer' && (
+              <option value="crop">Crop Recommendations</option>
+            )}
+            {userRole === 'buyer' && (
+              <option value="buyer">Find Farmers</option>
+            )}
+            {userRole === 'financier' && (
+              <option value="financier">Investment Opportunities</option>
+            )}
+            <option value="market">Market Trends</option>
           </select>
         </div>
 
