@@ -12,7 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 from bson import ObjectId
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_active_user
 from app.models.user import User, UserRole
 from app.core.database import get_db, get_collection
 
@@ -527,9 +527,12 @@ async def respond_to_inquiry(
     inquiry_id: str,
     inquiry_update: InquiryUpdate,
     db: AsyncIOMotorDatabase = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Update the status of an inquiry (accept/reject)"""
+    """
+    Respond to an inquiry (accept/reject).
+    Sends notifications to both buyer and farmer when status changes.
+    """
     try:
         if current_user.role != UserRole.FARMER:
             raise HTTPException(
@@ -573,28 +576,67 @@ async def respond_to_inquiry(
         if result.modified_count == 0:
             raise HTTPException(status_code=500, detail="Failed to update inquiry")
             
-        # If inquiry is accepted, optionally mark the listing as sold
+        # If inquiry is accepted, mark the listing as sold
         if inquiry_update.status == "accepted":
-            # You might want to update listing status or reduce quantity
             await listings_collection.update_one(
                 {"_id": ObjectId(inquiry["crop_listing_id"])},
                 {"$set": {"status": "sold", "updated_at": datetime.now(timezone.utc)}}
             )
+            
+            # Get listing and buyer details for notifications
+            listing = await listings_collection.find_one({"_id": ObjectId(inquiry["crop_listing_id"])})
+            buyer = await users_collection.find_one({"_id": ObjectId(inquiry["buyer_id"])})
+            
+            # Send notifications
+            notifications_collection = get_collection("notifications")
+            current_time = datetime.now(timezone.utc)
+            
+            # Notification for buyer
+            buyer_notification = {
+                "user_id": inquiry["buyer_id"],
+                "title": "Inquiry Accepted!",
+                "message": f"Your inquiry for {listing.get('crop_type', 'crop')} has been accepted by {current_user.full_name}",
+                "notification_type": "inquiry_update",
+                "related_entity_type": "inquiry",
+                "related_entity_id": inquiry_id,
+                "is_read": False,
+                "created_at": current_time,
+                "updated_at": current_time
+            }
+            await notifications_collection.insert_one(buyer_notification)
+            
+            # Notification for farmer
+            farmer_notification = {
+                "user_id": str(current_user.id),
+                "title": "Inquiry Accepted",
+                "message": f"You've accepted the inquiry for your {listing.get('crop_type', 'crop')} listing",
+                "notification_type": "inquiry_update",
+                "related_entity_type": "inquiry",
+                "related_entity_id": inquiry_id,
+                "is_read": False,
+                "created_at": current_time,
+                "updated_at": current_time
+            }
+            await notifications_collection.insert_one(farmer_notification)
         
-        # Get the updated inquiry and return it properly formatted
+        # Get the updated inquiry with all details for response
         updated_inquiry = await inquiries_collection.find_one({"_id": ObjectId(inquiry_id)})
+        
+        # Get buyer and listing details for the response
+        buyer = await users_collection.find_one({"_id": ObjectId(updated_inquiry["buyer_id"])})
+        listing = await listings_collection.find_one({"_id": ObjectId(updated_inquiry["crop_listing_id"])})
         
         # Map database fields to frontend expectations
         inquiry_data = {
             "id": str(updated_inquiry.pop("_id")),
             "buyer_id": updated_inquiry.get("buyer_id", ""),
-            "farmer_id": updated_inquiry.get("farmer_id", str(current_user.id)),  # Include farmer_id
+            "farmer_id": updated_inquiry.get("farmer_id", str(current_user.id)),
             "listing_id": updated_inquiry.get("crop_listing_id", ""),
             "quantity": updated_inquiry.get("quantity_requested", 0.0),
             "proposed_price": updated_inquiry.get("proposed_price", 0.0),
             "message": updated_inquiry.get("message", ""),
             "status": updated_inquiry.get("status", "pending"),
-            "created_at": updated_inquiry.get("created_at", datetime.now(timezone.utc))
+            "created_at": updated_inquiry.get("created_at", current_time)
         }
         
         # Fetch additional data

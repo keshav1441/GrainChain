@@ -15,7 +15,6 @@ interface Inquiry {
   message: string;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
-  price_per_kg?: number;
 }
 
 
