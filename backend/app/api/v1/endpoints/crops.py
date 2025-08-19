@@ -37,9 +37,30 @@ class InquiryCreate(InquiryBase):
     pass
 
 class InquiryResponse(InquiryBase):
-    id: str
+    id: str = Field(alias="_id")
+    listing_id: str = Field(alias="crop_listing_id")  
+    farmer_id: str
+    buyer_id: str
+    farmer_id: str
+    buyer_name: Optional[str] = "Unknown Buyer"  # Make optional with default
+    crop_type: Optional[str] = "Unknown"  # Make optional with default
+    quantity: Optional[float] = 0.0  # Make optional with default
+    status: str = "pending"
+    proposed_price: int
+    farmer_response: Optional[str] = None
+    counter_price: Optional[float] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
     
     class Config:
+        populate_by_name = True
+        json_encoders = {
+            ObjectId: str,
+            datetime: lambda dt: dt.isoformat()
+        }
+    
+    class Config:
+        populate_by_name = True
         json_encoders = {
             ObjectId: str,
             datetime: lambda dt: dt.isoformat()
@@ -341,12 +362,10 @@ async def get_my_listings(
     except Exception as e:
         logger.error(f"Error getting my listings for farmer {current_user.id}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
-
-
-# Inquiry Endpoints
+# Fixed Inquiry Endpoints
 @router.get("/inquiries", response_model=List[InquiryResponse])
 async def get_farmer_inquiries(
-    status: Optional[str] = None,
+    status_filter: Optional[str] = Query(None, alias="status"),
     skip: int = 0,
     limit: int = 100,
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -361,21 +380,71 @@ async def get_farmer_inquiries(
             )
 
         inquiries_collection = get_collection("inquiries")
+        listings_collection = get_collection("crop_listings")
+        users_collection = get_collection("users")
         
         # Build query to find inquiries for this farmer's listings
         query: Dict[str, Any] = {
             "farmer_id": str(current_user.id)
         }
         
-        if status:
-            query["status"] = status
+        if status_filter:
+            query["status"] = status_filter
             
         cursor = inquiries_collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
         
         inquiries = []
         async for doc in cursor:
-            doc["id"] = str(doc.pop("_id"))
-            inquiries.append(InquiryResponse(**doc))
+            try:
+                # Convert ObjectId to string
+                doc_id = str(doc.pop("_id"))
+                
+                # Map database fields to frontend expectations
+                inquiry_data = {
+                    "id": doc_id,
+                    "buyer_id": doc.get("buyer_id", ""),
+                    "farmer_id": doc.get("farmer_id", str(current_user.id)),  # Include farmer_id
+                    "listing_id": doc.get("crop_listing_id", ""),  # Map crop_listing_id to listing_id
+                    "quantity": doc.get("quantity_requested", 0.0),  # Map quantity_requested to quantity
+                    "proposed_price": doc.get("proposed_price", 0.0),
+                    "message": doc.get("message", ""),
+                    "status": doc.get("status", "pending"),
+                    "created_at": doc.get("created_at", datetime.now(timezone.utc))
+                }
+                
+                # Fetch buyer name from users collection
+                buyer_name = "Unknown Buyer"
+                if doc.get("buyer_id"):
+                    try:
+                        buyer = await users_collection.find_one({"_id": ObjectId(doc["buyer_id"])})
+                        if buyer:
+                            buyer_name = buyer.get("full_name", "Unknown Buyer")
+                    except Exception as buyer_error:
+                        logger.warning(f"Could not fetch buyer name for {doc['buyer_id']}: {buyer_error}")
+                
+                inquiry_data["buyer_name"] = buyer_name
+                
+                # Fetch crop type and price_per_kg from crop listing
+                crop_type = "Unknown"
+                price_per_kg = None
+                if doc.get("crop_listing_id"):
+                    try:
+                        listing = await listings_collection.find_one({"_id": ObjectId(doc["crop_listing_id"])})
+                        if listing:
+                            crop_type = listing.get("crop_type", "Unknown")
+                            price_per_kg = listing.get("price_per_kg")
+                    except Exception as listing_error:
+                        logger.warning(f"Could not fetch listing details for {doc['crop_listing_id']}: {listing_error}")
+                
+                inquiry_data["crop_type"] = crop_type
+                inquiry_data["price_per_kg"] = price_per_kg
+                
+                inquiries.append(InquiryResponse(**inquiry_data))
+                
+            except Exception as doc_error:
+                logger.error(f"Error processing inquiry document {doc.get('_id', 'unknown')}: {doc_error}")
+                # Skip this document and continue with others
+                continue
             
         return inquiries
         
@@ -383,8 +452,10 @@ async def get_farmer_inquiries(
         raise
     except Exception as e:
         logger.error(f"Error getting inquiries for farmer {current_user.id}: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch inquiries")
-
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Failed to fetch inquiries"
+        )
 
 @router.get("/inquiries/{inquiry_id}", response_model=InquiryResponse)
 async def get_inquiry(
@@ -395,6 +466,8 @@ async def get_inquiry(
     """Get a specific inquiry by ID"""
     try:
         inquiries_collection = get_collection("inquiries")
+        listings_collection = get_collection("crop_listings")
+        users_collection = get_collection("users")
         
         # Find the inquiry
         inquiry = await inquiries_collection.find_one({"_id": ObjectId(inquiry_id)})
@@ -407,9 +480,40 @@ async def get_inquiry(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this inquiry"
             )
+        
+        # Map database fields to frontend expectations
+        inquiry_data = {
+            "id": str(inquiry.pop("_id")),
+            "buyer_id": inquiry.get("buyer_id", ""),
+            "farmer_id": inquiry.get("farmer_id", str(current_user.id)),  # Include farmer_id
+            "listing_id": inquiry.get("crop_listing_id", ""),
+            "quantity": inquiry.get("quantity_requested", 0.0),
+            "proposed_price": inquiry.get("proposed_price", 0.0),
+            "message": inquiry.get("message", ""),
+            "status": inquiry.get("status", "pending"),
+            "created_at": inquiry.get("created_at", datetime.now(timezone.utc))
+        }
+        
+        # Fetch additional data
+        buyer_name = "Unknown Buyer"
+        if inquiry.get("buyer_id"):
+            buyer = await users_collection.find_one({"_id": ObjectId(inquiry["buyer_id"])})
+            if buyer:
+                buyer_name = buyer.get("full_name", "Unknown Buyer")
+        
+        crop_type = "Unknown"
+        price_per_kg = None
+        if inquiry.get("crop_listing_id"):
+            listing = await listings_collection.find_one({"_id": ObjectId(inquiry["crop_listing_id"])})
+            if listing:
+                crop_type = listing.get("crop_type", "Unknown")
+                price_per_kg = listing.get("price_per_kg")
+        
+        inquiry_data["buyer_name"] = buyer_name
+        inquiry_data["crop_type"] = crop_type
+        inquiry_data["price_per_kg"] = price_per_kg
             
-        inquiry["id"] = str(inquiry.pop("_id"))
-        return InquiryResponse(**inquiry)
+        return InquiryResponse(**inquiry_data)
         
     except HTTPException:
         raise
@@ -440,6 +544,8 @@ async def respond_to_inquiry(
             )
             
         inquiries_collection = get_collection("inquiries")
+        listings_collection = get_collection("crop_listings")
+        users_collection = get_collection("users")
         
         # Find the inquiry
         inquiry = await inquiries_collection.find_one({"_id": ObjectId(inquiry_id)})
@@ -467,19 +573,50 @@ async def respond_to_inquiry(
         if result.modified_count == 0:
             raise HTTPException(status_code=500, detail="Failed to update inquiry")
             
-        # Get the updated inquiry
-        updated_inquiry = await inquiries_collection.find_one({"_id": ObjectId(inquiry_id)})
-        updated_inquiry["id"] = str(updated_inquiry.pop("_id"))
-        
-        # If inquiry is accepted, mark the listing as sold or update its status
+        # If inquiry is accepted, optionally mark the listing as sold
         if inquiry_update.status == "accepted":
-            listings_collection = get_collection("crop_listings")
+            # You might want to update listing status or reduce quantity
             await listings_collection.update_one(
-                {"_id": ObjectId(inquiry["listing_id"])},
-                {"$set": {"status": "sold"}}
+                {"_id": ObjectId(inquiry["crop_listing_id"])},
+                {"$set": {"status": "sold", "updated_at": datetime.now(timezone.utc)}}
             )
         
-        return InquiryResponse(**updated_inquiry)
+        # Get the updated inquiry and return it properly formatted
+        updated_inquiry = await inquiries_collection.find_one({"_id": ObjectId(inquiry_id)})
+        
+        # Map database fields to frontend expectations
+        inquiry_data = {
+            "id": str(updated_inquiry.pop("_id")),
+            "buyer_id": updated_inquiry.get("buyer_id", ""),
+            "farmer_id": updated_inquiry.get("farmer_id", str(current_user.id)),  # Include farmer_id
+            "listing_id": updated_inquiry.get("crop_listing_id", ""),
+            "quantity": updated_inquiry.get("quantity_requested", 0.0),
+            "proposed_price": updated_inquiry.get("proposed_price", 0.0),
+            "message": updated_inquiry.get("message", ""),
+            "status": updated_inquiry.get("status", "pending"),
+            "created_at": updated_inquiry.get("created_at", datetime.now(timezone.utc))
+        }
+        
+        # Fetch additional data
+        buyer_name = "Unknown Buyer"
+        if updated_inquiry.get("buyer_id"):
+            buyer = await users_collection.find_one({"_id": ObjectId(updated_inquiry["buyer_id"])})
+            if buyer:
+                buyer_name = buyer.get("full_name", "Unknown Buyer")
+        
+        crop_type = "Unknown"
+        price_per_kg = None
+        if updated_inquiry.get("crop_listing_id"):
+            listing = await listings_collection.find_one({"_id": ObjectId(updated_inquiry["crop_listing_id"])})
+            if listing:
+                crop_type = listing.get("crop_type", "Unknown")
+                price_per_kg = listing.get("price_per_kg")
+        
+        inquiry_data["buyer_name"] = buyer_name
+        inquiry_data["crop_type"] = crop_type
+        inquiry_data["price_per_kg"] = price_per_kg
+        
+        return InquiryResponse(**inquiry_data)
         
     except HTTPException:
         raise

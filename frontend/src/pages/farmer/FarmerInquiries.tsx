@@ -11,6 +11,7 @@ interface Inquiry {
   listing_id: string;
   crop_type: string;
   quantity: number;
+  proposed_price: number;
   message: string;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
@@ -172,7 +173,7 @@ export const FarmerInquiries: React.FC = () => {
                                   clipRule="evenodd"
                                 />
                               </svg>
-                              {inquiry.quantity} kg • {inquiry.price_per_kg ? `₹${inquiry.price_per_kg}/kg` : 'Price not specified'}
+                              {inquiry.quantity} kg • {inquiry.proposed_price ? `₹${inquiry.proposed_price}/kg` : 'Price not specified'}
                             </div>
                           </div>
                         </div>
